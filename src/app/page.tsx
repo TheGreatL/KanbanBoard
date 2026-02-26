@@ -109,11 +109,6 @@ export default function Home() {
       .single();
 
     if (data) {
-      // Add owner as the first member
-      await supabase
-        .from("project_members")
-        .insert({ project_id: data.id, user_id: user.id, role: 'owner' });
-
       setProjects([data, ...projects]);
       setActiveProjectId(data.id);
     }

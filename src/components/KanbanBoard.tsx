@@ -17,8 +17,12 @@ import { TransformWrapper, TransformComponent, useControls, useTransformEffect }
 import Column, { ColumnType } from "./Column";
 import TaskCard, { Task } from "./TaskCard";
 import { supabase } from "@/lib/supabase";
-import { Plus, Loader2, ZoomIn, ZoomOut, LayoutList, AlignLeft, X, Check, Columns, Maximize, Users, Share2, Search, UserPlus, UserMinus } from "lucide-react";
 import { Tooltip } from "./ui/Tooltip";
+import { useToast } from "./ui/Toast";
+import { Columns, Loader2, Maximize, Plus, Share2, Users, ZoomIn, ZoomOut } from "lucide-react";
+import ShareModal from "./modals/ShareModal";
+import AddTaskModal from "./modals/AddTaskModal";
+import AddColumnModal from "./modals/AddColumnModal";
 interface KanbanBoardProps {
   projectId: string;
 }
@@ -72,6 +76,7 @@ function ZoomControls() {
 }
 
 export default function KanbanBoard({ projectId }: KanbanBoardProps) {
+  const { showToast } = useToast();
   const [projectName, setProjectName] = useState("");
   const [columns, setColumns] = useState<ColumnType[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -80,28 +85,40 @@ export default function KanbanBoard({ projectId }: KanbanBoardProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [collaborators, setCollaborators] = useState<any[]>([]);
 
-  // Global Add Task Modal State
-  const [isAddingTask, setIsAddingTask] = useState(false);
-  const [newTaskTitle, setNewTaskTitle] = useState("");
-  const [newTaskContent, setNewTaskContent] = useState("");
-  const [selectedColumnId, setSelectedColumnId] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const addTitleInputRef = useRef<HTMLInputElement>(null);
-
-  // Add Column Modal State
-  const [isAddingColumn, setIsAddingColumn] = useState(false);
-  const [newColumnTitle, setNewColumnTitle] = useState("");
-  const [newColumnColor, setNewColumnColor] = useState("zinc");
-  const columnTitleInputRef = useRef<HTMLInputElement>(null);
-
-  // Share Modal State
-  const [isSharing, setIsSharing] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<any[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
-  const [projectMembers, setProjectMembers] = useState<any[]>([]);
-  const [invitingRole, setInvitingRole] = useState("editor");
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [isSharing, setIsSharing] = useState(false);
+  const [isAddingTask, setIsAddingTask] = useState(false);
+  const [isAddingColumn, setIsAddingColumn] = useState(false);
+  const [selectedColumnId, setSelectedColumnId] = useState("");
+  
+  const columnsRef = useRef<ColumnType[]>([]);
+  const tasksRef = useRef<Task[]>([]);
+  const initialColumnIdRef = useRef<string | null>(null);
+
+  // Custom setters that also update the sync refs immediately
+  const updateColumns = useCallback((updater: ColumnType[] | ((prev: ColumnType[]) => ColumnType[])) => {
+    setColumns((prev) => {
+      const next = typeof updater === "function" ? updater(prev) : updater;
+      columnsRef.current = next;
+      return next;
+    });
+  }, []);
+
+  const sortTasks = (tsks: Task[]) => {
+    return [...tsks].sort((a, b) => {
+      if (a.column_id !== b.column_id) return a.column_id.localeCompare(b.column_id);
+      return (a.position - b.position) || (a.id.localeCompare(b.id));
+    });
+  };
+
+  const updateTasks = useCallback((updater: Task[] | ((prev: Task[]) => Task[]), shouldSort = false) => {
+    setTasks((prev) => {
+      const next = typeof updater === "function" ? updater(prev) : updater;
+      const result = shouldSort ? sortTasks(next) : next;
+      tasksRef.current = result;
+      return result;
+    });
+  }, []);
 
   // Advanced Realtime State
   const [remoteCursors, setRemoteCursors] = useState<Record<string, { x: number; y: number; username: string }>>({});
@@ -124,107 +141,86 @@ export default function KanbanBoard({ projectId }: KanbanBoardProps) {
   };
 
   // Fetch initial data
-  useEffect(() => {
-    async function fetchData() {
-      setIsLoading(true);
+  const fetchBoardData = useCallback(async () => {
+    setIsLoading(true);
 
-      // Fetch project details
-      const { data: project } = await supabase
-        .from("projects")
-        .select("title")
-        .eq("id", projectId)
-        .single();
-      
-      if (project) {
-        setProjectName(project.title);
-      }
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      setCurrentUserId(user.id);
+    }
 
-      // Fetch columns (excluding archived ones, except the pool)
-      const { data: cols } = await supabase
-        .from("columns")
+    // Fetch project details
+    const { data: project } = await supabase
+      .from("projects")
+      .select("title")
+      .eq("id", projectId)
+      .single();
+    
+    if (project) {
+      setProjectName(project.title);
+    }
+
+    // Fetch columns (excluding archived ones, except the pool)
+    const { data: cols } = await supabase
+      .from("columns")
+      .select("*")
+      .eq("project_id", projectId)
+      .or("archived_at.is.null,is_archive_pool.eq.true")
+      .order("position");
+
+    let finalCols = cols || [];
+
+    // Sort columns: regular columns stay in order, archived pool always goes last
+    const sortedCols = [...finalCols].sort((a, b) => {
+      if (a.is_archive_pool) return 1;
+      if (b.is_archive_pool) return -1;
+      return a.position - b.position;
+    });
+
+    updateColumns(sortedCols);
+    if (finalCols.length > 0 && !selectedColumnId) {
+      // Prefer first non-archived column for selection
+      const firstActive = finalCols.find(c => !c.archived_at && !c.is_archive_pool);
+      setSelectedColumnId(firstActive ? firstActive.id : finalCols[0].id);
+    }
+
+    if (finalCols.length > 0) {
+      const colIds = finalCols.map((c: { id: string }) => c.id);
+      const { data: tsks } = await supabase
+        .from("tasks")
         .select("*")
-        .eq("project_id", projectId)
-        .or("archived_at.is.null,is_archive_pool.eq.true")
+        .in("column_id", colIds)
+        .is("archived_at", null) // Fetch only non-archived for regular view
         .order("position");
-
-      let finalCols = cols || [];
-
-      // De-duplicate archive pools if they exist (legacy cleanup/safety)
-      const archivePools = finalCols.filter(c => c.is_archive_pool);
-      if (archivePools.length > 1) {
-        const keepId = archivePools[0].id;
-        finalCols = finalCols.filter(c => !c.is_archive_pool || c.id === keepId);
-      }
-
-      // Ensure Archived column exists for this project
-      const archivePool = finalCols.find(c => c.is_archive_pool);
-      if (!archivePool) {
-        const { data: newPool } = await supabase
-          .from("columns")
-          .insert({ 
-            project_id: projectId, 
-            title: "Archived", 
-            color: "zinc", 
-            position: finalCols.length, 
-            is_archive_pool: true 
-          })
-          .select()
-          .single();
-        
-        if (newPool) {
-          finalCols = [...finalCols, newPool];
-        }
-      }
-
-      // Sort columns: regular columns stay in order, archived pool always goes last
-      const sortedCols = [...finalCols].sort((a, b) => {
-        if (a.is_archive_pool) return 1;
-        if (b.is_archive_pool) return -1;
-        return a.position - b.position;
-      });
-
-      setColumns(sortedCols);
-      if (finalCols.length > 0 && !selectedColumnId) {
-        // Prefer first non-archived column for selection
-        const firstActive = finalCols.find(c => !c.archived_at && !c.is_archive_pool);
-        setSelectedColumnId(firstActive ? firstActive.id : finalCols[0].id);
-      }
-
-      if (finalCols.length > 0) {
-        const colIds = finalCols.map((c: { id: string }) => c.id);
-        const { data: tsks } = await supabase
+      
+      // Fetch archived tasks specifically for the archive pool
+      const pool = finalCols.find(c => c.is_archive_pool);
+      if (pool) {
+        const { data: archivedTsks } = await supabase
           .from("tasks")
           .select("*")
-          .in("column_id", colIds)
-          .is("archived_at", null) // Fetch only non-archived for regular view
-          .order("position");
+          .eq("column_id", pool.id)
+          .not("archived_at", "is", null)
+          .order("archived_at", { ascending: false });
         
-        // Fetch archived tasks specifically for the archive pool
-        const pool = finalCols.find(c => c.is_archive_pool);
-        if (pool) {
-          const { data: archivedTsks } = await supabase
-            .from("tasks")
-            .select("*")
-            .eq("column_id", pool.id)
-            .not("archived_at", "is", null)
-            .order("archived_at", { ascending: false });
-          
-          if (tsks && archivedTsks) {
-            setTasks([...tsks, ...archivedTsks]);
-          } else if (tsks) {
-            setTasks(tsks);
-          } else if (archivedTsks) {
-            setTasks(archivedTsks);
-          }
+        if (tsks && archivedTsks) {
+          updateTasks([...tsks, ...archivedTsks], true);
         } else if (tsks) {
-          setTasks(tsks);
+          updateTasks(tsks, true);
+        } else if (archivedTsks) {
+          updateTasks(archivedTsks, true);
         }
-      } else {
-        setTasks([]);
+      } else if (tsks) {
+        updateTasks(tsks, true);
       }
-      setIsLoading(false);
+    } else {
+      updateTasks([], true);
     }
-    fetchData();
+    setIsLoading(false);
+  }, [projectId, selectedColumnId, updateColumns, updateTasks]);
+
+  useEffect(() => {
+    fetchBoardData();
 
     const handleBroadcast = (payload: any) => {
       if (payload.event === "cursor") {
@@ -269,33 +265,22 @@ export default function KanbanBoard({ projectId }: KanbanBoardProps) {
         async (payload) => {
           if (payload.eventType === "INSERT") {
             const newCol = payload.new as ColumnType;
-            setColumns((prev) => {
+            updateColumns((prev) => {
               if (prev.some((c) => c.id === newCol.id)) return prev;
-              // Prevent duplicate archive pools in real-time
               if (newCol.is_archive_pool && prev.some(c => c.is_archive_pool)) return prev;
-              
-              const next = [...prev, newCol].sort((a, b) => {
-                if (a.is_archive_pool) return 1;
-                if (b.is_archive_pool) return -1;
-                return a.position - b.position;
-              });
-              return next;
+              return [...prev, newCol];
             });
           } else if (payload.eventType === "UPDATE") {
             const updatedCol = payload.new as ColumnType;
             if (updatedCol.archived_at && !updatedCol.is_archive_pool) {
-              setColumns((prev) => prev.filter((c) => c.id !== updatedCol.id));
+              updateColumns((prev) => prev.filter((c) => c.id !== updatedCol.id));
             } else {
-              setColumns((prev) =>
-                prev.map((c) => (c.id === updatedCol.id ? updatedCol : c)).sort((a, b) => {
-                  if (a.is_archive_pool) return 1;
-                  if (b.is_archive_pool) return -1;
-                  return a.position - b.position;
-                })
+              updateColumns((prev) =>
+                prev.map((c) => (c.id === updatedCol.id ? updatedCol : c))
               );
             }
           } else if (payload.eventType === "DELETE") {
-            setColumns((prev) => prev.filter((c) => c.id !== payload.old.id));
+            updateColumns((prev) => prev.filter((c) => c.id !== payload.old.id));
           }
         }
       )
@@ -312,17 +297,18 @@ export default function KanbanBoard({ projectId }: KanbanBoardProps) {
           // we filter locally using the current column list.
           if (payload.eventType === "INSERT") {
             const newTask = payload.new as Task;
-            setTasks((prev) => {
+            updateTasks((prev) => {
               if (prev.some((t) => t.id === newTask.id)) return prev;
               return [...prev, newTask];
-            });
+            }, true);
           } else if (payload.eventType === "UPDATE") {
             const updatedTask = payload.new as Task;
-            setTasks((prev) =>
-              prev.map((t) => (t.id === updatedTask.id ? updatedTask : t))
+            updateTasks((prev) =>
+              prev.map((t) => (t.id === updatedTask.id ? updatedTask : t)),
+              true
             );
           } else if (payload.eventType === "DELETE") {
-            setTasks((prev) => prev.filter((t) => t.id !== payload.old.id));
+            updateTasks((prev) => prev.filter((t) => t.id !== payload.old.id), false);
           }
         }
       )
@@ -335,10 +321,8 @@ export default function KanbanBoard({ projectId }: KanbanBoardProps) {
         setCollaborators(users);
       })
       .on("presence", { event: "join" }, ({ key, newPresences }) => {
-        console.log("join", key, newPresences);
       })
       .on("presence", { event: "leave" }, ({ key, leftPresences }) => {
-        console.log("leave", key, leftPresences);
       })
       .subscribe(async (status) => {
         if (status === "SUBSCRIBED") {
@@ -392,7 +376,7 @@ export default function KanbanBoard({ projectId }: KanbanBoardProps) {
     const tempId = `temp-${Date.now()}`;
     const nowStr = new Date().toISOString();
     const newTask: Task = { id: tempId, column_id: columnId, project_id: projectId, title, content, position: newPos, created_at: nowStr };
-    setTasks((prev) => [...prev, newTask]);
+    updateTasks((prev) => [...prev, newTask]);
 
     const { data } = await supabase
       .from("tasks")
@@ -401,28 +385,134 @@ export default function KanbanBoard({ projectId }: KanbanBoardProps) {
       .single();
 
     if (data) {
-      setTasks((prev) => prev.map((t) => (t.id === tempId ? data : t)));
+      updateTasks((prev) => prev.map((t) => (t.id === tempId ? data : t)));
+      showToast({ 
+        type: "success", 
+        title: "Task Created", 
+        message: `"${title}" has been added to the column.` 
+      });
     }
   };
 
-  const handleGlobalAddTask = async (e?: React.FormEvent) => {
-    e?.preventDefault();
-    if (!selectedColumnId) return;
-    const trimTitle = newTaskTitle.trim();
-    const trimContent = newTaskContent.trim();
-    if (!trimTitle && !trimContent) return;
+  // Modal Open Handlers
+  const openShareModal = () => setIsSharing(true);
+  const openAddTaskModal = (columnId?: string) => {
+    if (columnId) setSelectedColumnId(columnId);
+    setIsAddingTask(true);
+  };
+  const openAddColumnModal = () => setIsAddingColumn(true);
 
-    setIsSubmitting(true);
-    await addTask(selectedColumnId, trimTitle, trimContent);
-    setNewTaskTitle("");
-    setNewTaskContent("");
-    setIsSubmitting(false);
-    setIsAddingTask(false);
+  const deleteTask = async (id: string) => {
+    const task = tasks.find(t => t.id === id);
+    if (!task) return;
+
+    const column = columns.find(c => c.id === task.column_id);
+    const archivePool = columns.find(c => c.is_archive_pool);
+
+    if (column?.is_archive_pool) {
+      // Hard delete if already in archive
+      updateTasks((prev) => prev.filter((t) => t.id !== id));
+      await supabase.from("tasks").delete().eq("id", id);
+    } else if (archivePool) {
+      // Soft delete: move to archive pool, set archived_at, and remember current column
+      const now = new Date().toISOString();
+      const currentColumnId = task.column_id;
+      const updatedTask = { ...task, column_id: archivePool.id, archived_at: now, previous_column_id: currentColumnId, position: 0 };
+      updateTasks((prev) => [updatedTask, ...prev.filter((t) => t.id !== id)]);
+      await supabase.from("tasks").update({ column_id: archivePool.id, archived_at: now, previous_column_id: currentColumnId, position: 0 }).eq("id", id);
+      
+      showToast({
+        type: "info",
+        title: "Task Archived",
+        message: `"${task.title}" moved to Archive.`,
+        action: {
+          label: "Undo",
+          onClick: () => restoreTask(id),
+        },
+      });
+    } else {
+      // Fallback to hard delete if no archive pool (though we ensure it exists)
+      updateTasks((prev) => prev.filter((t) => t.id !== id));
+      await supabase.from("tasks").delete().eq("id", id);
+      showToast({ 
+        type: "info", 
+        title: "Task Deleted", 
+        message: `"${task.title}" has been permanently removed.` 
+      });
+    }
+  };
+
+  const archiveColumn = async (id: string) => {
+    const column = columns.find(c => c.id === id);
+    if (!column || column.is_archive_pool) return;
+
+    const now = new Date().toISOString();
+    updateColumns((prev) => prev.filter((c) => c.id !== id));
+    // Tasks in this column are NOT automatically archived, they just become inaccessible via this board
+    // until we decide if we want to move them. Common pattern is to let them be.
+    if (selectedColumnId === id) setSelectedColumnId("");
+    await supabase.from("columns").update({ archived_at: now }).eq("id", id);
+      showToast({
+        type: "info",
+        title: "Column Archived",
+        message: `"${column.title}" has been moved to Archive.`,
+        action: {
+          label: "Undo",
+          onClick: async () => {
+            updateColumns((prev) => [...prev, column]);
+            const { error } = await supabase.from("columns").update({ archived_at: null }).eq("id", id);
+            if (!error) {
+              showToast({
+                type: "success",
+                title: "Column Restored",
+                message: `"${column.title}" is back on the board.`
+              });
+            }
+          }
+        },
+      });
+  };
+
+  const updateColumnColor = async (id: string, color: string) => {
+    updateColumns((prev) => prev.map((c) => (c.id === id ? { ...c, color } : c)));
+    const { error } = await supabase.from("columns").update({ color }).eq("id", id);
+    if (!error) {
+      showToast({
+        type: "success",
+        title: "Color Updated",
+        message: "Column color saved successfully."
+      });
+    }
+  };
+
+  const updateColumnTitle = async (id: string, title: string) => {
+    updateColumns((prev) => prev.map((c) => (c.id === id ? { ...c, title } : c)));
+    const { error } = await supabase.from("columns").update({ title }).eq("id", id);
+    if (!error) {
+      showToast({
+        type: "success",
+        title: "Column Renamed",
+        message: `Column renamed to "${title}".`
+      });
+    }
   };
 
   const updateTask = async (id: string, title: string, content: string) => {
-    setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, title, content } : t)));
-    await supabase.from("tasks").update({ title, content }).eq("id", id);
+    updateTasks((prev) => prev.map((t) => (t.id === id ? { ...t, title, content } : t)));
+    const { error } = await supabase.from("tasks").update({ title, content }).eq("id", id);
+    if (!error) {
+      showToast({ 
+        type: "success", 
+        title: "Task Updated", 
+        message: `Changes to "${title}" have been saved.` 
+      });
+    } else {
+      showToast({ 
+        type: "error", 
+        title: "Update Failed", 
+        message: `Could not save changes to "${title}".` 
+      });
+    }
   };
 
   const restoreTask = async (id: string) => {
@@ -438,8 +528,15 @@ export default function KanbanBoard({ projectId }: KanbanBoardProps) {
 
     if (!finalTargetId) return;
 
-    setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, column_id: finalTargetId, archived_at: null, previous_column_id: null, position: 0 } : t)));
-    await supabase.from("tasks").update({ column_id: finalTargetId, archived_at: null, previous_column_id: null, position: 0 }).eq("id", id);
+    updateTasks((prev) => prev.map((t) => (t.id === id ? { ...t, column_id: finalTargetId, archived_at: null, previous_column_id: null, position: 0 } : t)));
+    const { error } = await supabase.from("tasks").update({ column_id: finalTargetId, archived_at: null, previous_column_id: null, position: 0 }).eq("id", id);
+    if (!error) {
+      showToast({ 
+        type: "success", 
+        title: "Task Restored", 
+        message: `"${task.title}" is back in its original place.` 
+      });
+    }
   };
 
   const addColumn = async (title: string, color: string) => {
@@ -459,127 +556,19 @@ export default function KanbanBoard({ projectId }: KanbanBoardProps) {
       // If we have an archive pool, we need to make sure it's still at the end
       if (archivePool) {
         const updatedPool = { ...archivePool, position: newPos + 1 };
-        setColumns([...regularCols, data, updatedPool]);
+        updateColumns([...regularCols, data, updatedPool]);
         // Update archive pool position in DB too
         await supabase.from("columns").update({ position: newPos + 1 }).eq("id", archivePool.id);
       } else {
-        setColumns([...regularCols, data]);
+        updateColumns([...regularCols, data]);
       }
       if (!selectedColumnId) setSelectedColumnId(data.id);
+      showToast({ 
+        type: "success", 
+        title: "Column Added", 
+        message: `"${title}" column is now active.` 
+      });
     }
-  };
-
-  const handleGlobalAddColumn = async (e?: React.FormEvent) => {
-    e?.preventDefault();
-    const trimTitle = newColumnTitle.trim();
-    if (!trimTitle) return;
-
-    setIsSubmitting(true);
-    await addColumn(trimTitle, newColumnColor);
-    setNewColumnTitle("");
-    setNewColumnColor("zinc");
-    setIsSubmitting(false);
-    setIsAddingColumn(false);
-  };
-
-  const fetchProjectMembers = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) setCurrentUserId(user.id);
-    
-    const { data } = await supabase
-      .from("project_members")
-      .select("*, profile:profiles(username)")
-      .eq("project_id", projectId);
-    if (data) setProjectMembers(data);
-  };
-
-  useEffect(() => {
-    if (isSharing) fetchProjectMembers();
-  }, [isSharing, projectId]);
-
-  const searchUsers = async (query: string) => {
-    if (!query.trim()) {
-      setSearchResults([]);
-      return;
-    }
-    setIsSearching(true);
-    const { data } = await supabase
-      .from("profiles")
-      .select("id, username")
-      .ilike("username", `%${query}%`)
-      .limit(5);
-    setSearchResults(data || []);
-    setIsSearching(false);
-  };
-
-  const addProjectMember = async (userId: string) => {
-    const { error } = await supabase
-      .from("project_members")
-      .insert({ project_id: projectId, user_id: userId, role: invitingRole });
-    
-    if (!error) {
-      await fetchProjectMembers();
-      setSearchQuery("");
-      setSearchResults([]);
-    }
-  };
-
-  const removeProjectMember = async (memberId: string) => {
-    const { error } = await supabase
-      .from("project_members")
-      .delete()
-      .eq("id", memberId);
-    
-    if (!error) {
-      await fetchProjectMembers();
-    }
-  };
-
-  const deleteTask = async (id: string) => {
-    const task = tasks.find(t => t.id === id);
-    if (!task) return;
-
-    const column = columns.find(c => c.id === task.column_id);
-    const archivePool = columns.find(c => c.is_archive_pool);
-
-    if (column?.is_archive_pool) {
-      // Hard delete if already in archive
-      setTasks((prev) => prev.filter((t) => t.id !== id));
-      await supabase.from("tasks").delete().eq("id", id);
-    } else if (archivePool) {
-      // Soft delete: move to archive pool, set archived_at, and remember current column
-      const now = new Date().toISOString();
-      const currentColumnId = task.column_id;
-      const updatedTask = { ...task, column_id: archivePool.id, archived_at: now, previous_column_id: currentColumnId, position: 0 };
-      setTasks((prev) => [updatedTask, ...prev.filter((t) => t.id !== id)]);
-      await supabase.from("tasks").update({ column_id: archivePool.id, archived_at: now, previous_column_id: currentColumnId, position: 0 }).eq("id", id);
-    } else {
-      // Fallback to hard delete if no archive pool (though we ensure it exists)
-      setTasks((prev) => prev.filter((t) => t.id !== id));
-      await supabase.from("tasks").delete().eq("id", id);
-    }
-  };
-
-  const archiveColumn = async (id: string) => {
-    const column = columns.find(c => c.id === id);
-    if (!column || column.is_archive_pool) return;
-
-    const now = new Date().toISOString();
-    setColumns((prev) => prev.filter((c) => c.id !== id));
-    // Tasks in this column are NOT automatically archived, they just become inaccessible via this board
-    // until we decide if we want to move them. Common pattern is to let them be.
-    if (selectedColumnId === id) setSelectedColumnId("");
-    await supabase.from("columns").update({ archived_at: now }).eq("id", id);
-  };
-
-  const updateColumnColor = async (id: string, color: string) => {
-    setColumns((prev) => prev.map((c) => (c.id === id ? { ...c, color } : c)));
-    await supabase.from("columns").update({ color }).eq("id", id);
-  };
-
-  const updateColumnTitle = async (id: string, title: string) => {
-    setColumns((prev) => prev.map((c) => (c.id === id ? { ...c, title } : c)));
-    await supabase.from("columns").update({ title }).eq("id", id);
   };
 
   const sensors = useSensors(
@@ -601,8 +590,9 @@ export default function KanbanBoard({ projectId }: KanbanBoardProps) {
 
     if (type === "Task" && active.data.current) {
       setActiveTask(active.data.current.task);
-      // Broadcast start of drag
-      const channel = supabase.channel(`project:${projectId}`);
+      initialColumnIdRef.current = active.data.current.task.column_id;
+      // Broadcast start of drag using ref
+      const channel = channelRef.current;
       if (channel && currentUserId) {
         channel.send({
           type: "broadcast",
@@ -636,7 +626,7 @@ export default function KanbanBoard({ projectId }: KanbanBoardProps) {
 
     // Dropping a Task over another Task
     if (isActiveTask && isOverTask) {
-      setTasks((tasks) => {
+      updateTasks((tasks) => {
         const activeIndex = tasks.findIndex((t) => t.id === activeId);
         const overIndex = tasks.findIndex((t) => t.id === overId);
         
@@ -648,8 +638,8 @@ export default function KanbanBoard({ projectId }: KanbanBoardProps) {
 
         const result = arrayMove(newTasks, activeIndex, overIndex);
         
-        // Broadcast movement
-        const channel = supabase.channel(`project:${projectId}`);
+        // Broadcast movement using ref
+        const channel = channelRef.current;
         if (channel && currentUserId) {
           channel.send({
             type: "broadcast",
@@ -669,7 +659,7 @@ export default function KanbanBoard({ projectId }: KanbanBoardProps) {
 
     // Dropping a Task over a Column
     if (isActiveTask && isOverColumn) {
-      setTasks((tasks) => {
+      updateTasks((tasks) => {
         const activeIndex = tasks.findIndex((t) => t.id === activeId);
         const newTasks = [...tasks];
         newTasks[activeIndex] = {
@@ -679,8 +669,8 @@ export default function KanbanBoard({ projectId }: KanbanBoardProps) {
 
         const result = arrayMove(newTasks, activeIndex, activeIndex);
         
-        // Broadcast movement
-        const channel = supabase.channel(`project:${projectId}`);
+        // Broadcast movement using ref
+        const channel = channelRef.current;
         if (channel && currentUserId) {
           channel.send({
             type: "broadcast",
@@ -700,8 +690,8 @@ export default function KanbanBoard({ projectId }: KanbanBoardProps) {
   };
 
   const onDragEnd = async (event: DragEndEvent) => {
-    // Broadcast end of drag
-    const channel = supabase.channel(`project:${projectId}`);
+    // 1. Broadcast and reset UI state immediately
+    const channel = channelRef.current;
     if (channel && currentUserId) {
       channel.send({
         type: "broadcast",
@@ -714,74 +704,117 @@ export default function KanbanBoard({ projectId }: KanbanBoardProps) {
     setActiveTask(null);
 
     const { active, over } = event;
-    if (!over) return;
+    if (!over) {
+      initialColumnIdRef.current = null;
+      return;
+    }
 
     const activeId = active.id;
     const overId = over.id;
 
-    if (activeId === overId) return;
+    // Use current refs to avoid stale closures
+    const currentCols = columnsRef.current;
+    const currentTasks = tasksRef.current;
+    const initialColumnId = initialColumnIdRef.current;
+    
+    initialColumnIdRef.current = null; // Clear for next operation
 
+    if (activeId === overId && !initialColumnId) return;
+
+    // --- HANDLE COLUMN DRAG ---
     const isActiveColumn = active.data.current?.type === "Column";
     if (isActiveColumn) {
-      const activeColIndex = columns.findIndex((col) => col.id === activeId);
-      const overColId = overId.toString();
-      const overColIndex = columns.findIndex((col) => col.id === overId);
+      const activeColIndex = currentCols.findIndex((col) => col.id === activeId);
+      const overColIndex = currentCols.findIndex((col) => col.id === overId);
       
-      const overCol = columns[overColIndex];
-      // Prevent dragging a regular column AFTER the archive pool
-      // Or prevent dragging the archive pool itself if we wanted (but Column.tsx already prevents dragging handle)
-      
-      const newColumns = arrayMove(columns, activeColIndex, overColIndex);
-
-      // Final sanity check to ensure archive_pool is last
+      const newColumns = arrayMove(currentCols, activeColIndex, overColIndex);
       const finalColumns = [...newColumns].sort((a, b) => {
         if (a.is_archive_pool) return 1;
         if (b.is_archive_pool) return -1;
-        return 0; // Maintain relative order from arrayMove
+        return 0;
       });
 
-      setColumns(finalColumns.map((col, idx) => ({ ...col, position: idx })));
-      for (const [idx, col] of finalColumns.entries()) {
-        supabase.from("columns").update({ position: idx }).eq("id", col.id).then();
+      const updatedColumns = finalColumns.map((col, idx) => ({ ...col, position: idx }));
+      setColumns(updatedColumns);
+      
+      const columnsToUpsert = updatedColumns.map((col) => ({
+        id: col.id,
+        project_id: projectId,
+        position: col.position,
+        title: col.title,
+        color: col.color,
+        is_archive_pool: col.is_archive_pool
+      }));
+
+      try {
+        const { error } = await supabase.from("columns").upsert(columnsToUpsert);
+        if (error) throw error;
+        showToast({
+          type: "success",
+          title: "Board Updated",
+          message: "Column arrangement saved."
+        });
+      } catch (err: any) {
+        console.error("Column persistence error:", err);
+        showToast({
+          type: "error",
+          title: "Save Failed",
+          message: err.message || "Could not save column order."
+        });
       }
       return;
     }
 
+    // --- HANDLE TASK DRAG ---
     const isActiveTask = active.data.current?.type === "Task";
     if (isActiveTask) {
-      const activeObj = tasks.find((t) => t.id === activeId);
-      if (!activeObj) return;
+      const activeTaskInState = currentTasks.find(t => t.id === activeId);
+      if (!activeTaskInState) return;
+      
+      const targetColumnId = activeTaskInState.column_id;
+      const affectedColumnIds = Array.from(new Set([initialColumnId || targetColumnId, targetColumnId]));
 
-      const colTasks = tasks.filter((t) => t.column_id === activeObj.column_id);
+      // Select and prepare ALL tasks in the source and destination columns
+      const tasksToUpsert = currentTasks
+        .filter(t => affectedColumnIds.includes(t.column_id))
+        .map((t) => {
+          const colTasks = currentTasks.filter(tsk => tsk.column_id === t.column_id);
+          const idx = colTasks.findIndex(tsk => tsk.id === t.id);
+          return {
+            id: t.id,
+            column_id: t.column_id,
+            position: idx,
+            project_id: t.project_id || projectId,
+            content: t.content,
+            title: t.title,
+            archived_at: t.archived_at
+          };
+        });
 
-      for (const [idx, tsk] of colTasks.entries()) {
-        if (tsk.id === activeId) {
-          supabase.from("tasks").update({ column_id: activeObj.column_id, position: idx }).eq("id", activeId).then();
-        } else if (tsk.position !== idx) {
-          supabase.from("tasks").update({ position: idx }).eq("id", tsk.id).then();
-        }
+      if (tasksToUpsert.length === 0) return;
+
+      try {
+        const { error } = await supabase.from("tasks").upsert(tasksToUpsert);
+        if (error) throw error;
+
+        showToast({
+          type: "success",
+          title: "Board Updated",
+          message: initialColumnId === targetColumnId 
+            ? "Task order saved." 
+            : `"${activeTaskInState.title}" moved to ${currentCols.find(c => c.id === targetColumnId)?.title || "Target"}.`
+        });
+      } catch (err: any) {
+        console.error("Task persistence error:", err);
+        showToast({
+          type: "error",
+          title: "Sync Error",
+          message: "Could not save changes. Refreshing..."
+        });
+        fetchBoardData(); // Force sync with server
       }
     }
-  }
-
-  // Focus/Select input when modals open
-  useEffect(() => {
-    if (isAddingTask) {
-      setTimeout(() => {
-        addTitleInputRef.current?.focus();
-        addTitleInputRef.current?.select();
-      }, 50);
-    }
-  }, [isAddingTask]);
-
-  useEffect(() => {
-    if (isAddingColumn) {
-      setTimeout(() => {
-        columnTitleInputRef.current?.focus();
-        columnTitleInputRef.current?.select();
-      }, 50);
-    }
-  }, [isAddingColumn]);
+  };
 
   if (isLoading) {
     return (
@@ -833,7 +866,7 @@ export default function KanbanBoard({ projectId }: KanbanBoardProps) {
 
         <div className="flex items-center gap-2">
           <button
-            onClick={() => openGlobalAddTask()}
+            onClick={() => openAddTaskModal()}
             disabled={columns.length === 0}
             className="flex items-center gap-2 px-3 py-1.5 text-xs font-semibold bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 rounded-lg hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
           >
@@ -841,14 +874,14 @@ export default function KanbanBoard({ projectId }: KanbanBoardProps) {
             Add Task
           </button>
           <button
-            onClick={() => setIsAddingColumn(true)}
+            onClick={openAddColumnModal}
             className="flex items-center gap-2 px-3 py-1.5 text-xs font-semibold bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 border border-zinc-200 dark:border-zinc-800 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-all shadow-sm cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5" />
             Add Column
           </button>
           <button
-            onClick={() => setIsSharing(true)}
+            onClick={openShareModal}
             className="flex items-center gap-2 px-3 py-1.5 text-xs font-semibold bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 border border-zinc-200 dark:border-zinc-800 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-all shadow-sm cursor-pointer"
           >
             <Share2 className="w-3.5 h-3.5" />
@@ -897,8 +930,7 @@ export default function KanbanBoard({ projectId }: KanbanBoardProps) {
                     }}
                     addTask={addTask}
                     onAddTaskClick={() => {
-                      setSelectedColumnId(col.id);
-                      setIsAddingTask(true);
+                      openAddTaskModal(col.id);
                     }}
                     updateTask={updateTask}
                     updateColumnColor={updateColumnColor}
@@ -908,7 +940,7 @@ export default function KanbanBoard({ projectId }: KanbanBoardProps) {
               </SortableContext>
 
               <button
-                onClick={() => setIsAddingColumn(true)}
+                onClick={openAddColumnModal}
                 className="no-pan w-80 shrink-0 h-[60px] flex items-center justify-center gap-2 border-2 border-dashed border-zinc-200 dark:border-zinc-800 rounded-2xl text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:border-zinc-300 dark:hover:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-900/50 transition-all cursor-pointer group"
               >
                 <Plus className="w-5 h-5 group-hover:scale-110 transition-transform" />
@@ -944,323 +976,28 @@ export default function KanbanBoard({ projectId }: KanbanBoardProps) {
         <ZoomControls />
       </TransformWrapper>
 
-      {/* Global Add Task Modal — portalled to document.body */}
-      {isAddingTask && typeof window !== "undefined" && createPortal(
-        <div
-          className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 backdrop-blur-[2px] px-4"
-          onPointerDown={(e) => e.stopPropagation()}
-        >
-          <div
-            className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl w-full max-w-md flex flex-col gap-4 p-6"
-            onKeyDown={(e) => {
-              if (e.key === "Escape") {
-                setIsAddingTask(false);
-                setNewTaskTitle("");
-                setNewTaskContent("");
-              }
-            }}
-          >
-            {/* Modal header */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-zinc-900 dark:text-zinc-100 font-semibold">
-                <Plus className="w-4 h-4" />
-                <h2>Create New Task</h2>
-              </div>
-              <button
-                onClick={() => {
-                  setIsAddingTask(false);
-                  setNewTaskTitle("");
-                  setNewTaskContent("");
-                }}
-                className="p-1.5 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* Fields */}
-            <div className="flex flex-col gap-4">
-              <div className="flex flex-col gap-1.5">
-                <label className="flex items-center gap-1.5 text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
-                  Select Column
-                </label>
-                <select
-                  value={selectedColumnId}
-                  onChange={(e) => setSelectedColumnId(e.target.value)}
-                  className="w-full px-3 py-2 text-sm bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-zinc-200 dark:focus:ring-zinc-800 transition-all text-zinc-900 dark:text-zinc-100 outline-none"
-                >
-                  {columns.map((col) => (
-                    <option key={col.id} value={col.id}>
-                      {col.title}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <label className="flex items-center gap-1.5 text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
-                  <LayoutList className="w-3 h-3" />
-                  Task Title
-                </label>
-                <input
-                  ref={addTitleInputRef}
-                  value={newTaskTitle}
-                  onChange={(e) => setNewTaskTitle(e.target.value)}
-                  className="w-full px-3 py-2 text-sm bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-zinc-200 dark:focus:ring-zinc-800 transition-all text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 outline-none"
-                  placeholder="What needs to be done?"
-                />
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <label className="flex items-center gap-1.5 text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
-                  <AlignLeft className="w-3 h-3" />
-                  Description
-                </label>
-                <textarea
-                  value={newTaskContent}
-                  onChange={(e) => setNewTaskContent(e.target.value)}
-                  placeholder="Add some details..."
-                  rows={4}
-                  className="w-full px-3 py-2 text-sm bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-zinc-200 dark:focus:ring-zinc-800 transition-all text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 resize-none outline-none"
-                />
-              </div>
-            </div>
-
-            {/* Actions */}
-            <div className="flex items-center justify-end gap-3 mt-2">
-              <button
-                onClick={() => {
-                  setIsAddingTask(false);
-                  setNewTaskTitle("");
-                  setNewTaskContent("");
-                }}
-                className="px-4 cursor-pointer py-2 text-sm font-semibold text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => handleGlobalAddTask()}
-                disabled={isSubmitting || (!newTaskTitle.trim() && !newTaskContent.trim())}
-                className="flex items-center gap-2 px-6 py-2 text-sm font-bold bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 rounded-xl hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-                Create Task
-              </button>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
-      {/* Global Add Column Modal — portalled to document.body */}
-      {isAddingColumn && typeof window !== "undefined" && createPortal(
-        <div
-          className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 backdrop-blur-[2px] px-4"
-          onPointerDown={(e) => e.stopPropagation()}
-        >
-          <div
-            className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl w-full max-w-sm flex flex-col gap-4 p-6"
-            onKeyDown={(e) => {
-              if (e.key === "Escape") {
-                setIsAddingColumn(false);
-                setNewColumnTitle("");
-                setNewColumnColor("zinc");
-              }
-            }}
-          >
-            {/* Modal header */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-zinc-900 dark:text-zinc-100 font-semibold">
-                <Columns className="w-4 h-4 text-zinc-500" />
-                <h2>Add New Column</h2>
-              </div>
-              <button
-                onClick={() => {
-                  setIsAddingColumn(false);
-                  setNewColumnTitle("");
-                  setNewColumnColor("zinc");
-                }}
-                className="p-1.5 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* Fields */}
-            <div className="flex flex-col gap-4">
-              <div className="flex flex-col gap-1.5">
-                <label className="flex items-center gap-1.5 text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
-                  Column Name
-                </label>
-                <input
-                  ref={columnTitleInputRef}
-                  autoFocus
-                  value={newColumnTitle}
-                  onChange={(e) => setNewColumnTitle(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") handleGlobalAddColumn();
-                  }}
-                  className="w-full px-3 py-2 text-sm bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-zinc-200 dark:focus:ring-zinc-800 transition-all text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 outline-none"
-                  placeholder="e.g. In Progress, Done..."
-                />
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <label className="flex items-center gap-1.5 text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
-                  Theme Color
-                </label>
-                <div className="grid grid-cols-6 gap-2 pt-1">
-                  {AVAILABLE_COLORS.map((color) => (
-                      <Tooltip key={color} text={color}>
-                        <button
-                          onClick={() => setNewColumnColor(color)}
-                          className={`w-full aspect-square rounded-full ${DOT_COLOR_MAP[color]} hover:scale-110 transition-transform flex items-center justify-center cursor-pointer ${newColumnColor === color ? 'ring-2 ring-offset-2 ring-zinc-400 dark:ring-zinc-600 dark:ring-offset-zinc-950 shadow-sm' : ''}`}
-                        >
-                          {newColumnColor === color && <Check className="w-3 h-3 text-white" />}
-                        </button>
-                      </Tooltip>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Actions */}
-            <div className="flex items-center justify-end gap-3 mt-2">
-              <button
-                onClick={() => {
-                  setIsAddingColumn(false);
-                  setNewColumnTitle("");
-                  setNewColumnColor("zinc");
-                }}
-                className="px-4 py-2 text-sm font-semibold text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 transition-colors cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => handleGlobalAddColumn()}
-                disabled={isSubmitting || !newColumnTitle.trim()}
-                className="flex items-center gap-2 px-6 py-2 text-sm font-bold bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 rounded-xl hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-              >
-                {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-                Create Column
-              </button>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
-
-      {/* Share Modal — portalled to document.body */}
-      {isSharing && typeof window !== "undefined" && createPortal(
-        <div
-          className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 backdrop-blur-[2px] px-4"
-          onPointerDown={(e) => e.stopPropagation()}
-        >
-          <div
-            className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl w-full max-w-md flex flex-col gap-4 p-6"
-            onKeyDown={(e) => {
-              if (e.key === "Escape") setIsSharing(false);
-            }}
-          >
-            {/* Modal header */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-zinc-900 dark:text-zinc-100 font-semibold">
-                <Share2 className="w-4 h-4 text-zinc-500" />
-                <h2>Share Project</h2>
-              </div>
-              <button
-                onClick={() => setIsSharing(false)}
-                className="p-1.5 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* Invite Section */}
-            <div className="flex flex-col gap-3">
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Search className="h-4 w-4 text-zinc-400" />
-                </div>
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => {
-                    setSearchQuery(e.target.value);
-                    searchUsers(e.target.value);
-                  }}
-                  className="w-full pl-10 pr-3 py-2 text-sm bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-zinc-200 dark:focus:ring-zinc-800 transition-all text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 outline-none"
-                  placeholder="Invite by username..."
-                />
-              </div>
-
-              {/* Search Results */}
-              {searchResults.length > 0 && (
-                <div className="bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden divide-y divide-zinc-200 dark:divide-zinc-800">
-                  {searchResults.map((user) => (
-                    <div key={user.id} className="flex items-center justify-between p-3">
-                      <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-full bg-zinc-200 dark:bg-zinc-800 flex items-center justify-center text-xs font-bold">
-                          {user.username.charAt(0).toUpperCase()}
-                        </div>
-                        <span className="text-sm font-medium text-zinc-900 dark:text-zinc-100">{user.username}</span>
-                      </div>
-                      <button
-                        onClick={() => addProjectMember(user.id)}
-                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 rounded-lg hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-all cursor-pointer"
-                      >
-                        <UserPlus className="w-3 h-3" />
-                        Invite
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {isSearching && (
-                <div className="flex items-center justify-center p-4">
-                  <Loader2 className="w-4 h-4 animate-spin text-zinc-400" />
-                </div>
-              )}
-            </div>
-
-            {/* Members List */}
-            <div className="flex flex-col gap-2 pt-2 border-t border-zinc-200 dark:border-zinc-800">
-              <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-wider px-1">Current Members</h3>
-              <div className="flex flex-col gap-1 max-h-[200px] overflow-y-auto pr-1">
-                {projectMembers.map((member) => (
-                  <div key={member.id} className="flex items-center justify-between p-2 hover:bg-zinc-50 dark:hover:bg-zinc-900 rounded-xl transition-colors">
-                    <div className="flex items-center gap-2">
-                      <div className="w-7 h-7 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-[10px] font-bold">
-                        {member.profile?.username?.charAt(0).toUpperCase()}
-                      </div>
-                      <div className="flex flex-col">
-                        <span className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
-                          {member.profile?.username}
-                        </span>
-                        <span className="text-[10px] text-zinc-500 capitalize">{member.role}</span>
-                      </div>
-                    </div>
-                    {member.user_id !== currentUserId && member.role !== 'owner' && (
-                      <Tooltip text="Remove member">
-                        <button
-                          onClick={() => removeProjectMember(member.id)}
-                          className="p-1.5 text-zinc-400 hover:text-red-500 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors cursor-pointer"
-                        >
-                          <UserMinus className="w-3.5 h-3.5" />
-                        </button>
-                      </Tooltip>
-                    )}
-                  </div>
-                ))}
-                {projectMembers.length === 0 && (
-                  <p className="text-xs text-zinc-500 italic p-2 text-center">No other members yet.</p>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
+      {/* Modal Components */}
+      <AddTaskModal
+        isOpen={isAddingTask}
+        onClose={() => setIsAddingTask(false)}
+        columns={columns}
+        selectedColumnId={selectedColumnId}
+        onSelectedColumnIdChange={setSelectedColumnId}
+        onAddTask={addTask}
+      />
+      <AddColumnModal
+        isOpen={isAddingColumn}
+        onClose={() => setIsAddingColumn(false)}
+        onAddColumn={addColumn}
+        availableColors={AVAILABLE_COLORS}
+        dotColorMap={DOT_COLOR_MAP}
+      />
+      <ShareModal
+        isOpen={isSharing}
+        onClose={() => setIsSharing(false)}
+        projectId={projectId}
+        currentUserId={currentUserId}
+      />
     </div>
   );
 }

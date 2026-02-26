@@ -303,6 +303,7 @@ export default function Column({
               <TaskCard
                 key={task.id}
                 task={task}
+                columnColor={column.color}
                 deleteTask={deleteTask}
                 updateTask={updateTask}
                 restoreTask={column.is_archive_pool ? restoreTask : undefined}
@@ -392,10 +393,10 @@ export default function Column({
                   archiveColumn(column.id);
                   setIsDeleteDialogOpen(false);
                 }}
-                className="flex items-center gap-1.5 px-4 py-2 text-xs bg-amber-500 text-white font-medium rounded-lg hover:bg-amber-500/90 transition-colors cursor-pointer"
+                className="flex items-center gap-1.5 px-5 py-2 text-xs bg-amber-500 text-white font-bold rounded-lg hover:bg-amber-600 transition-colors cursor-pointer"
               >
-                <Archive className="w-3.5 h-3.5" />
-                Archive
+                <Check className="w-3.5 h-3.5" />
+                Confirm Archive
               </button>
             </div>
           </div>
