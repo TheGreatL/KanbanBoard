@@ -14,6 +14,7 @@ export default function Home() {
   const [loadingProjects, setLoadingProjects] = useState(false);
   const [projects, setProjects] = useState<Project[]>([]);
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const router = useRouter();
 
 
@@ -25,7 +26,6 @@ export default function Home() {
     const { data } = await supabase
       .from("projects")
       .select("*")
-      .eq("user_id", user.id)
       .order("created_at", { ascending: false });
 
     if (data) {
@@ -46,6 +46,7 @@ export default function Home() {
       if (!session) {
         router.push("/auth");
       } else {
+        setCurrentUserId(session.user.id);
         fetchProjects();
         setLoading(false);
       }
@@ -57,12 +58,43 @@ export default function Home() {
       (event, session) => {
         if (!session) {
           router.push("/auth");
+        } else {
+          setCurrentUserId(session.user.id);
+          fetchProjects();
         }
       }
     );
 
+    // Subscribe to project_members changes to update project list in real-time
+    const membersChannel = supabase
+      .channel("sidebar_sync")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "project_members",
+        },
+        () => {
+          fetchProjects();
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "projects",
+        },
+        () => {
+          fetchProjects();
+        }
+      )
+      .subscribe();
+
     return () => {
       authListener.subscription.unsubscribe();
+      supabase.removeChannel(membersChannel);
     };
   }, [router, fetchProjects]);
 
@@ -77,6 +109,11 @@ export default function Home() {
       .single();
 
     if (data) {
+      // Add owner as the first member
+      await supabase
+        .from("project_members")
+        .insert({ project_id: data.id, user_id: user.id, role: 'owner' });
+
       setProjects([data, ...projects]);
       setActiveProjectId(data.id);
     }
@@ -140,6 +177,7 @@ export default function Home() {
         onDeleteProject={deleteProjectPermanently}
         onUpdateProject={updateProject}
         onLogout={handleLogout}
+        currentUserId={currentUserId}
       />
       
       <main className="flex-1 overflow-hidden flex flex-col bg-white dark:bg-zinc-950 min-w-0 min-h-0">

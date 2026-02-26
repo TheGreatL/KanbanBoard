@@ -7,6 +7,7 @@ import { createPortal } from "react-dom";
 export interface Task {
   id: string;
   column_id: string;
+  project_id: string;
   title: string;
   content: string;
   position: number;

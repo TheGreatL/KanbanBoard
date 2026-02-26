@@ -1,10 +1,11 @@
-import { Plus, FolderKanban, LogOut, Loader2, Trash2, Pencil, X, Archive, RotateCcw, ChevronRight } from "lucide-react";
+import { Plus, FolderKanban, LogOut, Loader2, Trash2, Pencil, X, Archive, RotateCcw, ChevronRight, Users } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 
 export interface Project {
   id: string;
   title: string;
+  user_id: string;
   archived_at?: string | null;
 }
 
@@ -19,6 +20,7 @@ interface SidebarProps {
   onDeleteProject: (id: string) => Promise<void>;
   onUpdateProject: (id: string, title: string) => Promise<void>;
   onLogout: () => void;
+  currentUserId: string | null;
 }
 
 export default function Sidebar({
@@ -32,6 +34,7 @@ export default function Sidebar({
   onDeleteProject,
   onUpdateProject,
   onLogout,
+  currentUserId,
 }: SidebarProps) {
   const [isCreating, setIsCreating] = useState(false);
   const [newTitle, setNewTitle] = useState("");
@@ -105,6 +108,9 @@ export default function Sidebar({
               }`}
             />
             {p.title}
+            {p.user_id !== currentUserId && (
+              <Users className="w-2.5 h-2.5 ml-1 text-zinc-400 group-hover:text-zinc-500" />
+            )}
           </span>
         )}
 

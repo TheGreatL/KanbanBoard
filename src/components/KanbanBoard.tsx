@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -17,7 +17,7 @@ import { TransformWrapper, TransformComponent, useControls, useTransformEffect }
 import Column, { ColumnType } from "./Column";
 import TaskCard, { Task } from "./TaskCard";
 import { supabase } from "@/lib/supabase";
-import { Plus, Loader2, ZoomIn, ZoomOut, LayoutList, AlignLeft, X, Check, Columns, Maximize } from "lucide-react";
+import { Plus, Loader2, ZoomIn, ZoomOut, LayoutList, AlignLeft, X, Check, Columns, Maximize, Users, Share2, Search, UserPlus, UserMinus } from "lucide-react";
 interface KanbanBoardProps {
   projectId: string;
 }
@@ -73,6 +73,7 @@ export default function KanbanBoard({ projectId }: KanbanBoardProps) {
   const [activeColumn, setActiveColumn] = useState<ColumnType | null>(null);
   const [activeTask, setActiveTask] = useState<Task | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [collaborators, setCollaborators] = useState<any[]>([]);
 
   // Global Add Task Modal State
   const [isAddingTask, setIsAddingTask] = useState(false);
@@ -87,6 +88,20 @@ export default function KanbanBoard({ projectId }: KanbanBoardProps) {
   const [newColumnTitle, setNewColumnTitle] = useState("");
   const [newColumnColor, setNewColumnColor] = useState("zinc");
   const columnTitleInputRef = useRef<HTMLInputElement>(null);
+
+  // Share Modal State
+  const [isSharing, setIsSharing] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [projectMembers, setProjectMembers] = useState<any[]>([]);
+  const [invitingRole, setInvitingRole] = useState("editor");
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+
+  // Advanced Realtime State
+  const [remoteCursors, setRemoteCursors] = useState<Record<string, { x: number; y: number; username: string }>>({});
+  const [remoteDragging, setRemoteDragging] = useState<Record<string, { taskId: string; columnId: string; username: string }>>({});
+  const channelRef = useRef<any>(null);
 
   const AVAILABLE_COLORS = ["zinc", "blue", "rose", "emerald", "amber", "indigo", "violet", "cyan", "teal", "fuchsia", "orange"];
   const DOT_COLOR_MAP: Record<string, string> = {
@@ -128,6 +143,13 @@ export default function KanbanBoard({ projectId }: KanbanBoardProps) {
         .order("position");
 
       let finalCols = cols || [];
+
+      // De-duplicate archive pools if they exist (legacy cleanup/safety)
+      const archivePools = finalCols.filter(c => c.is_archive_pool);
+      if (archivePools.length > 1) {
+        const keepId = archivePools[0].id;
+        finalCols = finalCols.filter(c => !c.is_archive_pool || c.id === keepId);
+      }
 
       // Ensure Archived column exists for this project
       const archivePool = finalCols.find(c => c.is_archive_pool);
@@ -198,7 +220,163 @@ export default function KanbanBoard({ projectId }: KanbanBoardProps) {
       setIsLoading(false);
     }
     fetchData();
-  }, [projectId]);
+
+    const handleBroadcast = (payload: any) => {
+      if (payload.event === "cursor") {
+        const { userId, x, y, username } = payload.payload;
+        if (userId !== currentUserId) {
+          setRemoteCursors((prev) => ({ ...prev, [userId]: { x, y, username } }));
+        }
+      } else if (payload.event === "drag") {
+        const { userId, taskId, columnId, username } = payload.payload;
+        if (userId !== currentUserId) {
+          setRemoteDragging((prev) => ({ ...prev, [userId]: { taskId, columnId, username } }));
+        }
+      } else if (payload.event === "drag-end") {
+        const { userId } = payload.payload;
+        setRemoteDragging((prev) => {
+          const next = { ...prev };
+          delete next[userId];
+          return next;
+        });
+      }
+    };
+
+    // Subscribe to real-time updates
+    const channel = supabase.channel(`project:${projectId}`, {
+      config: {
+        presence: {
+          key: projectId,
+        },
+      },
+    });
+    channelRef.current = channel;
+
+    channel
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "columns",
+          filter: `project_id=eq.${projectId}`,
+        },
+        async (payload) => {
+          if (payload.eventType === "INSERT") {
+            const newCol = payload.new as ColumnType;
+            setColumns((prev) => {
+              if (prev.some((c) => c.id === newCol.id)) return prev;
+              // Prevent duplicate archive pools in real-time
+              if (newCol.is_archive_pool && prev.some(c => c.is_archive_pool)) return prev;
+              
+              const next = [...prev, newCol].sort((a, b) => {
+                if (a.is_archive_pool) return 1;
+                if (b.is_archive_pool) return -1;
+                return a.position - b.position;
+              });
+              return next;
+            });
+          } else if (payload.eventType === "UPDATE") {
+            const updatedCol = payload.new as ColumnType;
+            if (updatedCol.archived_at && !updatedCol.is_archive_pool) {
+              setColumns((prev) => prev.filter((c) => c.id !== updatedCol.id));
+            } else {
+              setColumns((prev) =>
+                prev.map((c) => (c.id === updatedCol.id ? updatedCol : c)).sort((a, b) => {
+                  if (a.is_archive_pool) return 1;
+                  if (b.is_archive_pool) return -1;
+                  return a.position - b.position;
+                })
+              );
+            }
+          } else if (payload.eventType === "DELETE") {
+            setColumns((prev) => prev.filter((c) => c.id !== payload.old.id));
+          }
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "tasks",
+          filter: `project_id=eq.${projectId}`,
+        },
+        (payload) => {
+          // Since we can't easily filter tasks by project_id in real-time filter (no column),
+          // we filter locally using the current column list.
+          if (payload.eventType === "INSERT") {
+            const newTask = payload.new as Task;
+            setTasks((prev) => {
+              if (prev.some((t) => t.id === newTask.id)) return prev;
+              return [...prev, newTask];
+            });
+          } else if (payload.eventType === "UPDATE") {
+            const updatedTask = payload.new as Task;
+            setTasks((prev) =>
+              prev.map((t) => (t.id === updatedTask.id ? updatedTask : t))
+            );
+          } else if (payload.eventType === "DELETE") {
+            setTasks((prev) => prev.filter((t) => t.id !== payload.old.id));
+          }
+        }
+      )
+      .on("broadcast", { event: "cursor" }, handleBroadcast)
+      .on("broadcast", { event: "drag" }, handleBroadcast)
+      .on("broadcast", { event: "drag-end" }, handleBroadcast)
+      .on("presence", { event: "sync" }, () => {
+        const state = channel.presenceState();
+        const users = Object.values(state).flat();
+        setCollaborators(users);
+      })
+      .on("presence", { event: "join" }, ({ key, newPresences }) => {
+        console.log("join", key, newPresences);
+      })
+      .on("presence", { event: "leave" }, ({ key, leftPresences }) => {
+        console.log("leave", key, leftPresences);
+      })
+      .subscribe(async (status) => {
+        if (status === "SUBSCRIBED") {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            await channel.track({
+              user_id: user.id,
+              username: user.user_metadata.username || user.email,
+              online_at: new Date().toISOString(),
+            });
+          }
+        }
+      });
+
+    return () => {
+      window.removeEventListener("mousemove", throttleMouseMove);
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
+    };
+  }, [projectId, currentUserId]);
+
+  // Broadcast mouse movements
+  const throttleMouseMove = useCallback((e: MouseEvent) => {
+    if (channelRef.current && currentUserId) {
+      channelRef.current.send({
+        type: "broadcast",
+        event: "cursor",
+        payload: {
+          userId: currentUserId,
+          username: collaborators.find(c => c.user_id === currentUserId)?.username || "Unknown",
+          x: e.clientX,
+          y: e.clientY,
+        },
+      });
+    }
+  }, [currentUserId, collaborators]);
+
+  useEffect(() => {
+    window.addEventListener("mousemove", throttleMouseMove);
+    return () => window.removeEventListener("mousemove", throttleMouseMove);
+  }, [throttleMouseMove]);
 
   const columnsId = useMemo(() => columns.map((col) => col.id), [columns]);
 
@@ -208,12 +386,12 @@ export default function KanbanBoard({ projectId }: KanbanBoardProps) {
 
     const tempId = `temp-${Date.now()}`;
     const nowStr = new Date().toISOString();
-    const newTask: Task = { id: tempId, column_id: columnId, title, content, position: newPos, created_at: nowStr };
+    const newTask: Task = { id: tempId, column_id: columnId, project_id: projectId, title, content, position: newPos, created_at: nowStr };
     setTasks((prev) => [...prev, newTask]);
 
     const { data } = await supabase
       .from("tasks")
-      .insert({ column_id: columnId, title, content, position: newPos })
+      .insert({ column_id: columnId, project_id: projectId, title, content, position: newPos })
       .select()
       .single();
 
@@ -299,6 +477,59 @@ export default function KanbanBoard({ projectId }: KanbanBoardProps) {
     setIsAddingColumn(false);
   };
 
+  const fetchProjectMembers = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) setCurrentUserId(user.id);
+    
+    const { data } = await supabase
+      .from("project_members")
+      .select("*, profile:profiles(username)")
+      .eq("project_id", projectId);
+    if (data) setProjectMembers(data);
+  };
+
+  useEffect(() => {
+    if (isSharing) fetchProjectMembers();
+  }, [isSharing, projectId]);
+
+  const searchUsers = async (query: string) => {
+    if (!query.trim()) {
+      setSearchResults([]);
+      return;
+    }
+    setIsSearching(true);
+    const { data } = await supabase
+      .from("profiles")
+      .select("id, username")
+      .ilike("username", `%${query}%`)
+      .limit(5);
+    setSearchResults(data || []);
+    setIsSearching(false);
+  };
+
+  const addProjectMember = async (userId: string) => {
+    const { error } = await supabase
+      .from("project_members")
+      .insert({ project_id: projectId, user_id: userId, role: invitingRole });
+    
+    if (!error) {
+      await fetchProjectMembers();
+      setSearchQuery("");
+      setSearchResults([]);
+    }
+  };
+
+  const removeProjectMember = async (memberId: string) => {
+    const { error } = await supabase
+      .from("project_members")
+      .delete()
+      .eq("id", memberId);
+    
+    if (!error) {
+      await fetchProjectMembers();
+    }
+  };
+
   const deleteTask = async (id: string) => {
     const task = tasks.find(t => t.id === id);
     if (!task) return;
@@ -354,18 +585,36 @@ export default function KanbanBoard({ projectId }: KanbanBoardProps) {
     return closestCorners(args);
   };
 
-  function onDragStart(event: DragStartEvent) {
-    if (event.active.data.current?.type === "Column") {
-      setActiveColumn(event.active.data.current.column);
-      return;
-    }
-    if (event.active.data.current?.type === "Task") {
-      setActiveTask(event.active.data.current.task);
-      return;
-    }
-  }
+  const onDragStart = (event: DragStartEvent) => {
+    const { active } = event;
+    const type = active.data.current?.type;
 
-  function onDragOver(event: DragOverEvent) {
+    if (type === "Column" && active.data.current) {
+      setActiveColumn(active.data.current.column);
+      return;
+    }
+
+    if (type === "Task" && active.data.current) {
+      setActiveTask(active.data.current.task);
+      // Broadcast start of drag
+      const channel = supabase.channel(`project:${projectId}`);
+      if (channel && currentUserId) {
+        channel.send({
+          type: "broadcast",
+          event: "drag",
+          payload: {
+            userId: currentUserId,
+            username: collaborators.find(c => c.user_id === currentUserId)?.username || "Unknown",
+            taskId: active.id,
+            columnId: active.data.current.task.column_id,
+          },
+        });
+      }
+      return;
+    }
+  };
+
+  const onDragOver = (event: DragOverEvent) => {
     const { active, over } = event;
     if (!over) return;
 
@@ -380,32 +629,82 @@ export default function KanbanBoard({ projectId }: KanbanBoardProps) {
 
     if (!isActiveTask) return;
 
+    // Dropping a Task over another Task
     if (isActiveTask && isOverTask) {
       setTasks((tasks) => {
         const activeIndex = tasks.findIndex((t) => t.id === activeId);
         const overIndex = tasks.findIndex((t) => t.id === overId);
+        
+        const newTasks = [...tasks];
+        newTasks[activeIndex] = {
+          ...tasks[activeIndex],
+          column_id: tasks[overIndex].column_id,
+        };
 
-        if (tasks[activeIndex].column_id !== tasks[overIndex].column_id) {
-          const newTasks = [...tasks];
-          newTasks[activeIndex].column_id = tasks[overIndex].column_id;
-          return arrayMove(newTasks, activeIndex, overIndex);
+        const result = arrayMove(newTasks, activeIndex, overIndex);
+        
+        // Broadcast movement
+        const channel = supabase.channel(`project:${projectId}`);
+        if (channel && currentUserId) {
+          channel.send({
+            type: "broadcast",
+            event: "drag",
+            payload: {
+              userId: currentUserId,
+              username: collaborators.find(c => c.user_id === currentUserId)?.username || "Unknown",
+              taskId: activeId,
+              columnId: tasks[overIndex].column_id,
+            },
+          });
         }
-
-        return arrayMove(tasks, activeIndex, overIndex);
+        
+        return result;
       });
     }
 
+    // Dropping a Task over a Column
     if (isActiveTask && isOverColumn) {
       setTasks((tasks) => {
         const activeIndex = tasks.findIndex((t) => t.id === activeId);
         const newTasks = [...tasks];
-        newTasks[activeIndex].column_id = overId.toString();
-        return arrayMove(newTasks, activeIndex, activeIndex);
+        newTasks[activeIndex] = {
+          ...tasks[activeIndex],
+          column_id: overId as string,
+        };
+
+        const result = arrayMove(newTasks, activeIndex, activeIndex);
+        
+        // Broadcast movement
+        const channel = supabase.channel(`project:${projectId}`);
+        if (channel && currentUserId) {
+          channel.send({
+            type: "broadcast",
+            event: "drag",
+            payload: {
+              userId: currentUserId,
+              username: collaborators.find(c => c.user_id === currentUserId)?.username || "Unknown",
+              taskId: activeId,
+              columnId: overId,
+            },
+          });
+        }
+        
+        return result;
       });
     }
-  }
+  };
 
-  async function onDragEnd(event: DragEndEvent) {
+  const onDragEnd = async (event: DragEndEvent) => {
+    // Broadcast end of drag
+    const channel = supabase.channel(`project:${projectId}`);
+    if (channel && currentUserId) {
+      channel.send({
+        type: "broadcast",
+        event: "drag-end",
+        payload: { userId: currentUserId },
+      });
+    }
+
     setActiveColumn(null);
     setActiveTask(null);
 
@@ -507,6 +806,24 @@ export default function KanbanBoard({ projectId }: KanbanBoardProps) {
           </h2>
           <div className="h-4 w-px bg-zinc-200 dark:bg-zinc-800" />
           <span className="text-xs text-zinc-500 font-medium">{columns.length} Columns • {tasks.length} Tasks</span>
+          <div className="h-4 w-px bg-zinc-200 dark:bg-zinc-800" />
+          <div className="flex -space-x-2 overflow-hidden">
+            {collaborators.map((collab, idx) => (
+              <div
+                key={idx}
+                className="inline-block h-6 w-6 rounded-full ring-2 ring-white dark:ring-zinc-950 bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-[10px] font-bold text-zinc-600 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700"
+                title={collab.username}
+              >
+                {collab.username?.charAt(0).toUpperCase()}
+              </div>
+            ))}
+            {collaborators.length === 0 && (
+              <div className="flex items-center gap-1.5 text-xs text-zinc-400">
+                <Users className="w-3 h-3" />
+                <span>Just you</span>
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="flex items-center gap-2">
@@ -524,6 +841,13 @@ export default function KanbanBoard({ projectId }: KanbanBoardProps) {
           >
             <Plus className="w-3.5 h-3.5" />
             Add Column
+          </button>
+          <button
+            onClick={() => setIsSharing(true)}
+            className="flex items-center gap-2 px-3 py-1.5 text-xs font-semibold bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 border border-zinc-200 dark:border-zinc-800 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-all shadow-sm cursor-pointer"
+          >
+            <Share2 className="w-3.5 h-3.5" />
+            Share
           </button>
         </div>
       </div>
@@ -559,6 +883,7 @@ export default function KanbanBoard({ projectId }: KanbanBoardProps) {
                   <Column
                     key={col.id}
                     column={col}
+                    remoteDragging={Object.values(remoteDragging).filter(d => d.columnId === col.id)}
                     tasks={tasks.filter((t) => t.column_id === col.id)}
                     archiveColumn={archiveColumn}
                     deleteTask={deleteTask}
@@ -813,6 +1138,118 @@ export default function KanbanBoard({ projectId }: KanbanBoardProps) {
                 {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
                 Create Column
               </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Share Modal — portalled to document.body */}
+      {isSharing && typeof window !== "undefined" && createPortal(
+        <div
+          className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 backdrop-blur-[2px] px-4"
+          onPointerDown={(e) => e.stopPropagation()}
+        >
+          <div
+            className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl w-full max-w-md flex flex-col gap-4 p-6"
+            onKeyDown={(e) => {
+              if (e.key === "Escape") setIsSharing(false);
+            }}
+          >
+            {/* Modal header */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-zinc-900 dark:text-zinc-100 font-semibold">
+                <Share2 className="w-4 h-4 text-zinc-500" />
+                <h2>Share Project</h2>
+              </div>
+              <button
+                onClick={() => setIsSharing(false)}
+                className="p-1.5 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Invite Section */}
+            <div className="flex flex-col gap-3">
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Search className="h-4 w-4 text-zinc-400" />
+                </div>
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    searchUsers(e.target.value);
+                  }}
+                  className="w-full pl-10 pr-3 py-2 text-sm bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-zinc-200 dark:focus:ring-zinc-800 transition-all text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 outline-none"
+                  placeholder="Invite by username..."
+                />
+              </div>
+
+              {/* Search Results */}
+              {searchResults.length > 0 && (
+                <div className="bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden divide-y divide-zinc-200 dark:divide-zinc-800">
+                  {searchResults.map((user) => (
+                    <div key={user.id} className="flex items-center justify-between p-3">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-full bg-zinc-200 dark:bg-zinc-800 flex items-center justify-center text-xs font-bold">
+                          {user.username.charAt(0).toUpperCase()}
+                        </div>
+                        <span className="text-sm font-medium text-zinc-900 dark:text-zinc-100">{user.username}</span>
+                      </div>
+                      <button
+                        onClick={() => addProjectMember(user.id)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 rounded-lg hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-all cursor-pointer"
+                      >
+                        <UserPlus className="w-3 h-3" />
+                        Invite
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {isSearching && (
+                <div className="flex items-center justify-center p-4">
+                  <Loader2 className="w-4 h-4 animate-spin text-zinc-400" />
+                </div>
+              )}
+            </div>
+
+            {/* Members List */}
+            <div className="flex flex-col gap-2 pt-2 border-t border-zinc-200 dark:border-zinc-800">
+              <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-wider px-1">Current Members</h3>
+              <div className="flex flex-col gap-1 max-h-[200px] overflow-y-auto pr-1">
+                {projectMembers.map((member) => (
+                  <div key={member.id} className="flex items-center justify-between p-2 hover:bg-zinc-50 dark:hover:bg-zinc-900 rounded-xl transition-colors">
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-[10px] font-bold">
+                        {member.profile?.username?.charAt(0).toUpperCase()}
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                          {member.profile?.username}
+                        </span>
+                        <span className="text-[10px] text-zinc-500 capitalize">{member.role}</span>
+                      </div>
+                    </div>
+                    {member.user_id !== currentUserId && member.role !== 'owner' && (
+                      <button
+                        onClick={() => removeProjectMember(member.id)}
+                        className="p-1.5 text-zinc-400 hover:text-red-500 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors cursor-pointer"
+                        title="Remove member"
+                      >
+                        <UserMinus className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                ))}
+                {projectMembers.length === 0 && (
+                  <p className="text-xs text-zinc-500 italic p-2 text-center">No other members yet.</p>
+                )}
+              </div>
             </div>
           </div>
         </div>,

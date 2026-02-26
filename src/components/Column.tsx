@@ -29,6 +29,7 @@ interface ColumnProps {
   updateColumnColor?: (columnId: string, color: string) => Promise<void>;
   updateColumnTitle?: (columnId: string, title: string) => Promise<void>;
   isOverlay?: boolean;
+  remoteDragging?: { taskId: string; columnId: string; username: string }[];
 }
 
 const AVAILABLE_COLORS = ["zinc", "blue", "rose", "emerald", "amber", "indigo", "violet", "cyan", "teal", "fuchsia", "orange"];
@@ -100,6 +101,7 @@ export default function Column({
   updateColumnColor,
   updateColumnTitle,
   isOverlay,
+  remoteDragging = [],
 }: ColumnProps) {
   const [showColorPicker, setShowColorPicker] = useState(false);
   const colorPickerRef = useRef<HTMLDivElement>(null);
@@ -303,7 +305,20 @@ export default function Column({
             ))}
           </SortableContext>
 
-          {tasks.length === 0 && (
+          {/* Remote Dragging Indicators (Ghost Cards) */}
+          {remoteDragging.map((dragging, idx) => (
+            <div
+              key={`dragging-${idx}`}
+              className="p-3 bg-indigo-50/50 dark:bg-indigo-950/20 border border-dashed border-indigo-200 dark:border-indigo-800 rounded-xl animate-pulse flex items-center gap-2 mt-2"
+            >
+              <div className="w-2 h-2 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.6)]" />
+              <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-medium italic truncate">
+                {dragging.username} is moving a task here...
+              </span>
+            </div>
+          ))}
+
+          {tasks.length === 0 && remoteDragging.length === 0 && (
             <div className="flex flex-col items-center justify-center py-6 text-zinc-400 dark:text-zinc-600 gap-1.5">
               <LayoutList className="w-5 h-5 opacity-50" />
               <p className="text-xs">No tasks yet</p>
