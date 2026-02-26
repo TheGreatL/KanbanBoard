@@ -30,12 +30,15 @@ export default function Home() {
 
     if (data) {
       setProjects(data);
-      if (data.length > 0 && !activeProjectId) {
-        setActiveProjectId(data[0].id);
-      }
+      // Only set active project from UNARCHIVED ones if none is active
+      setActiveProjectId((prev) => {
+        if (prev) return prev;
+        const firstActive = data.find(p => !p.archived_at);
+        return firstActive ? firstActive.id : (data.length > 0 ? data[0].id : null);
+      });
     }
     setLoadingProjects(false);
-  }, [activeProjectId]);
+  }, []); // no deps needed — reads supabase client (stable) only
 
   useEffect(() => {
     const checkUser = async () => {
@@ -79,11 +82,30 @@ export default function Home() {
     }
   };
 
-  const deleteProject = async (id: string) => {
+  const archiveProject = async (id: string) => {
+    const now = new Date().toISOString();
+    setProjects(projects.map((p) => (p.id === id ? { ...p, archived_at: now } : p)));
+    
+    // If archiving active project, switch to another active one
+    if (activeProjectId === id) {
+      const remainingActive = projects.filter((p) => p.id !== id && !p.archived_at);
+      setActiveProjectId(remainingActive.length > 0 ? remainingActive[0].id : null);
+    }
+    
+    await supabase.from("projects").update({ archived_at: now }).eq("id", id);
+  };
+
+  const restoreProject = async (id: string) => {
+    setProjects(projects.map((p) => (p.id === id ? { ...p, archived_at: null } : p)));
+    await supabase.from("projects").update({ archived_at: null }).eq("id", id);
+  };
+
+  const deleteProjectPermanently = async (id: string) => {
     setProjects(projects.filter((p) => p.id !== id));
     if (activeProjectId === id) {
-      const remaining = projects.filter((p) => p.id !== id);
-      setActiveProjectId(remaining.length > 0 ? remaining[0].id : null);
+      const remaining = projects.filter((p) => p.id !== id && !p.archived_at);
+      const remainingAll = projects.filter((p) => p.id !== id);
+      setActiveProjectId(remaining.length > 0 ? remaining[0].id : (remainingAll.length > 0 ? remainingAll[0].id : null));
     }
     await supabase.from("projects").delete().eq("id", id);
   };
@@ -113,7 +135,9 @@ export default function Home() {
         isLoading={loadingProjects}
         onSelectProject={setActiveProjectId}
         onCreateProject={createProject}
-        onDeleteProject={deleteProject}
+        onArchiveProject={archiveProject}
+        onRestoreProject={restoreProject}
+        onDeleteProject={deleteProjectPermanently}
         onUpdateProject={updateProject}
         onLogout={handleLogout}
       />
