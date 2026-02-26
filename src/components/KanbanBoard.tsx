@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -10,199 +10,188 @@ import {
   DragOverEvent,
   DragEndEvent,
   CollisionDetection,
-  ClientRect,
 } from "@dnd-kit/core";
 import { SortableContext, arrayMove, horizontalListSortingStrategy } from "@dnd-kit/sortable";
 import { createPortal } from "react-dom";
-import { useGesture } from "@use-gesture/react";
-import { useSpring, animated } from "@react-spring/web";
-import { useRef } from "react";
+import { TransformWrapper, TransformComponent, useControls, useTransformEffect } from "react-zoom-pan-pinch";
 import Column, { ColumnType } from "./Column";
 import TaskCard, { Task } from "./TaskCard";
 import { supabase } from "@/lib/supabase";
-import { Plus, Loader2, ZoomIn, ZoomOut } from "lucide-react";
-
+import { Plus, Loader2, ZoomIn, ZoomOut, LayoutList, AlignLeft, X, Check, Columns, Maximize } from "lucide-react";
 interface KanbanBoardProps {
   projectId: string;
 }
 
-const PAN_EDGE_ZONE = 50; // pixels from edge to trigger pan
-const PAN_SPEED = 5; // pixels per frame
+// Separate component so it can use useControls() inside TransformWrapper context
+function ZoomControls() {
+  const { zoomIn, zoomOut, resetTransform } = useControls();
+  const [displayScale, setDisplayScale] = useState(100);
+
+  useTransformEffect(({ state }) => {
+    setDisplayScale(Math.round(state.scale * 100));
+  });
+
+  return (
+    <div className="absolute bottom-6 right-6 flex items-center gap-2 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl p-1.5 shadow-sm select-none z-50 no-pan">
+      <button
+        onClick={() => zoomOut(0.2)}
+        className="p-2 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-900 rounded-lg transition-colors"
+        title="Zoom Out"
+      >
+        <ZoomOut className="w-5 h-5" />
+      </button>
+      <button
+        onClick={() => zoomIn(0.2)}
+        className="p-2 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-900 rounded-lg transition-colors"
+        title="Zoom In"
+      >
+        <ZoomIn className="w-5 h-5" />
+      </button>
+      <div className="w-px h-6 bg-zinc-200 dark:bg-zinc-800 mx-1" />
+      <button
+        onClick={() => resetTransform()}
+        className="p-2 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-900 rounded-lg transition-colors cursor-pointer"
+        title="Reset Camera"
+      >
+        <Maximize className="w-5 h-5" />
+      </button>
+      <div className="w-px h-6 bg-zinc-200 dark:bg-zinc-800 mx-0.5" />
+      <div
+        className="px-3 py-2 text-zinc-500 flex items-center justify-center min-w-[60px]"
+        title="Current Zoom"
+      >
+        <span className="text-xs font-semibold tabular-nums text-zinc-400 dark:text-zinc-600">{displayScale}%</span>
+      </div>
+    </div>
+  );
+}
 
 export default function KanbanBoard({ projectId }: KanbanBoardProps) {
+  const [projectName, setProjectName] = useState("");
   const [columns, setColumns] = useState<ColumnType[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [activeColumn, setActiveColumn] = useState<ColumnType | null>(null);
   const [activeTask, setActiveTask] = useState<Task | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  
-  // Canvas Transform State
-  const containerRef = useRef<HTMLDivElement>(null);
-  const contentRef = useRef<HTMLDivElement>(null);
-  const currentPos = useRef({ x: 0, y: 0 });
 
-  const [style, api] = useSpring(() => ({
-    x: 0,
-    y: 0,
-    scale: 1,
-  }), []);
+  // Global Add Task Modal State
+  const [isAddingTask, setIsAddingTask] = useState(false);
+  const [newTaskTitle, setNewTaskTitle] = useState("");
+  const [newTaskContent, setNewTaskContent] = useState("");
+  const [selectedColumnId, setSelectedColumnId] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const addTitleInputRef = useRef<HTMLInputElement>(null);
 
-  const getBoundedPosition = (nextX: number, nextY: number, currentScale?: number) => {
-    if (!containerRef.current || !contentRef.current) return { x: nextX, y: nextY };
-    
-    const container = containerRef.current.getBoundingClientRect();
-    const contentW = contentRef.current.scrollWidth;
-    const contentH = contentRef.current.scrollHeight;
-    
-    const scale = currentScale ?? style.scale.get();
-    const containerW = container.width / scale;
-    const containerH = container.height / scale;
-    
-    const paddingX = Math.max(0, containerW * 0.5);
-    const paddingY = Math.max(0, containerH * 0.5);
-    
-    const minX = -Math.max(0, contentW - containerW) - paddingX;
-    const maxX = paddingX;
-    
-    const minY = -Math.max(0, contentH - containerH) - paddingY;
-    const maxY = paddingY;
-    
-    return {
-      x: Math.min(Math.max(nextX, minX), maxX),
-      y: Math.min(Math.max(nextY, minY), maxY)
-    };
+  // Add Column Modal State
+  const [isAddingColumn, setIsAddingColumn] = useState(false);
+  const [newColumnTitle, setNewColumnTitle] = useState("");
+  const [newColumnColor, setNewColumnColor] = useState("zinc");
+  const columnTitleInputRef = useRef<HTMLInputElement>(null);
+
+  const AVAILABLE_COLORS = ["zinc", "blue", "rose", "emerald", "amber", "indigo", "violet", "cyan", "teal", "fuchsia", "orange"];
+  const DOT_COLOR_MAP: Record<string, string> = {
+    zinc: "bg-zinc-400",
+    blue: "bg-blue-400",
+    rose: "bg-rose-400",
+    emerald: "bg-emerald-400",
+    amber: "bg-amber-400",
+    indigo: "bg-indigo-400",
+    violet: "bg-violet-400",
+    cyan: "bg-cyan-400",
+    teal: "bg-teal-400",
+    fuchsia: "bg-fuchsia-400",
+    orange: "bg-orange-400",
   };
-
-  // Bind Figma-like gestures (Pan on Wheel, Zoom on Pinch/Ctrl+Wheel, Pan on Space+Drag)
-  const isSpaceDown = useRef(false);
-
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Don't trigger canvas panning if user is typing in an input or textarea
-      const target = e.target as HTMLElement;
-      if (['INPUT', 'TEXTAREA'].includes(target.tagName)) return;
-
-      if (e.code === "Space" && e.target === document.body) {
-        e.preventDefault();
-        isSpaceDown.current = true;
-        document.body.style.cursor = "grab";
-      }
-    };
-    const handleKeyUp = (e: KeyboardEvent) => {
-      if (e.code === "Space") {
-        isSpaceDown.current = false;
-        document.body.style.cursor = "default";
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    window.addEventListener("keyup", handleKeyUp);
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-      window.removeEventListener("keyup", handleKeyUp);
-    };
-  }, []);
-
-  useGesture(
-    {
-      onDrag: ({ delta: [dx, dy] }) => {
-        if (isSpaceDown.current) {
-          const nextX = currentPos.current.x + dx;
-          const nextY = currentPos.current.y + dy;
-          const bounded = getBoundedPosition(nextX, nextY);
-          currentPos.current = bounded;
-          api.start({ x: bounded.x, y: bounded.y });
-        }
-      },
-      onWheel: ({ event, delta: [dx, dy], ctrlKey }) => {
-        event.preventDefault();
-        
-        if (ctrlKey || event.metaKey) {
-            return;
-        } else {
-            // Panning
-            const nextX = currentPos.current.x - dx;
-            const nextY = currentPos.current.y - dy;
-            const bounded = getBoundedPosition(nextX, nextY);
-            currentPos.current = bounded;
-            api.start({ x: bounded.x, y: bounded.y });
-        }
-      },
-      onPinch: ({ offset: [s], event }) => {
-        event.preventDefault();
-        
-        // Dampen the zoom speed heavily for trackpads
-        const currentScale = style.scale.get();
-        const dampening = 0.05; 
-        const delta = (s - currentScale) * dampening;
-        
-        const clampedScale = Math.max(0.1, Math.min(currentScale + delta, 2)); // Limit zoom between 10% and 200%
-        
-        const bounded = getBoundedPosition(currentPos.current.x, currentPos.current.y, clampedScale);
-        currentPos.current = bounded;
-        api.start({ scale: clampedScale, x: bounded.x, y: bounded.y });
-      },
-    },
-    {
-      target: containerRef,
-      eventOptions: { passive: false },
-      drag: {
-         filterTaps: true,
-      },
-      wheel: {
-      },
-      pinch: {
-          from: () => [style.scale.get(), 0],
-          scaleBounds: { min: 0.1, max: 2 },
-      }
-    }
-  );
-
-  // Prevent native browser scrolling to focused elements which causes camera jumps
-  useEffect(() => {
-    const preventNativeScroll = (e: Event) => {
-      const target = e.target as HTMLElement | Document;
-      const el = target === document ? document.documentElement : (target as HTMLElement);
-      
-      // Ignore inner scrolling elements like textareas
-      if (el.tagName === 'TEXTAREA') return;
-      
-      // Reset scroll on all layout containers if they attempt to natively scroll
-      if (
-        el === document.documentElement ||
-        el === document.body ||
-        el.tagName === 'MAIN' ||
-        el.id === 'kanban-container' ||
-        el.classList?.contains('flex-1')
-      ) {
-        if (el.scrollTop !== 0) el.scrollTop = 0;
-        if (el.scrollLeft !== 0) el.scrollLeft = 0;
-      }
-    };
-
-    window.addEventListener('scroll', preventNativeScroll, true);
-    return () => window.removeEventListener('scroll', preventNativeScroll, true);
-  }, []);
 
   // Fetch initial data
   useEffect(() => {
     async function fetchData() {
       setIsLoading(true);
+
+      // Fetch project details
+      const { data: project } = await supabase
+        .from("projects")
+        .select("title")
+        .eq("id", projectId)
+        .single();
+      
+      if (project) {
+        setProjectName(project.title);
+      }
+
+      // Fetch columns (excluding archived ones, except the pool)
       const { data: cols } = await supabase
         .from("columns")
         .select("*")
         .eq("project_id", projectId)
+        .or("archived_at.is.null,is_archive_pool.eq.true")
         .order("position");
-      
-      if (cols) setColumns(cols);
 
-      if (cols && cols.length > 0) {
-        const colIds = cols.map((c: { id: string }) => c.id);
+      let finalCols = cols || [];
+
+      // Ensure Archived column exists for this project
+      const archivePool = finalCols.find(c => c.is_archive_pool);
+      if (!archivePool) {
+        const { data: newPool } = await supabase
+          .from("columns")
+          .insert({ 
+            project_id: projectId, 
+            title: "Archived", 
+            color: "zinc", 
+            position: finalCols.length, 
+            is_archive_pool: true 
+          })
+          .select()
+          .single();
+        
+        if (newPool) {
+          finalCols = [...finalCols, newPool];
+        }
+      }
+
+      // Sort columns: regular columns stay in order, archived pool always goes last
+      const sortedCols = [...finalCols].sort((a, b) => {
+        if (a.is_archive_pool) return 1;
+        if (b.is_archive_pool) return -1;
+        return a.position - b.position;
+      });
+
+      setColumns(sortedCols);
+      if (finalCols.length > 0 && !selectedColumnId) {
+        // Prefer first non-archived column for selection
+        const firstActive = finalCols.find(c => !c.archived_at && !c.is_archive_pool);
+        setSelectedColumnId(firstActive ? firstActive.id : finalCols[0].id);
+      }
+
+      if (finalCols.length > 0) {
+        const colIds = finalCols.map((c: { id: string }) => c.id);
         const { data: tsks } = await supabase
           .from("tasks")
           .select("*")
           .in("column_id", colIds)
+          .is("archived_at", null) // Fetch only non-archived for regular view
           .order("position");
-        if (tsks) setTasks(tsks);
+        
+        // Fetch archived tasks specifically for the archive pool
+        const pool = finalCols.find(c => c.is_archive_pool);
+        if (pool) {
+          const { data: archivedTsks } = await supabase
+            .from("tasks")
+            .select("*")
+            .eq("column_id", pool.id)
+            .not("archived_at", "is", null)
+            .order("archived_at", { ascending: false });
+          
+          if (tsks && archivedTsks) {
+            setTasks([...tsks, ...archivedTsks]);
+          } else if (tsks) {
+            setTasks(tsks);
+          } else if (archivedTsks) {
+            setTasks(archivedTsks);
+          }
+        } else if (tsks) {
+          setTasks(tsks);
+        }
       } else {
         setTasks([]);
       }
@@ -213,32 +202,10 @@ export default function KanbanBoard({ projectId }: KanbanBoardProps) {
 
   const columnsId = useMemo(() => columns.map((col) => col.id), [columns]);
 
-  const handleZoomIn = () => {
-    const currentScale = style.scale.get();
-    const clampedScale = Math.min(currentScale + 0.2, 2);
-    const bounded = getBoundedPosition(currentPos.current.x, currentPos.current.y, clampedScale);
-    currentPos.current = bounded;
-    api.start({ scale: clampedScale, x: bounded.x, y: bounded.y });
-  };
-
-  const handleZoomOut = () => {
-    const currentScale = style.scale.get();
-    const clampedScale = Math.max(currentScale - 0.2, 0.1);
-    const bounded = getBoundedPosition(currentPos.current.x, currentPos.current.y, clampedScale);
-    currentPos.current = bounded;
-    api.start({ scale: clampedScale, x: bounded.x, y: bounded.y });
-  };
-
-  const handleResetView = () => {
-    currentPos.current = { x: 0, y: 0 };
-    api.start({ x: 0, y: 0, scale: 1 });
-  };
-
   const addTask = async (columnId: string, title: string, content: string) => {
     const colTasks = tasks.filter((t) => t.column_id === columnId);
     const newPos = colTasks.length > 0 ? colTasks[colTasks.length - 1].position + 1 : 0;
-    
-    // Optimistic update
+
     const tempId = `temp-${Date.now()}`;
     const nowStr = new Date().toISOString();
     const newTask: Task = { id: tempId, column_id: columnId, title, content, position: newPos, created_at: nowStr };
@@ -255,21 +222,49 @@ export default function KanbanBoard({ projectId }: KanbanBoardProps) {
     }
   };
 
+  const handleGlobalAddTask = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    if (!selectedColumnId) return;
+    const trimTitle = newTaskTitle.trim();
+    const trimContent = newTaskContent.trim();
+    if (!trimTitle && !trimContent) return;
+
+    setIsSubmitting(true);
+    await addTask(selectedColumnId, trimTitle, trimContent);
+    setNewTaskTitle("");
+    setNewTaskContent("");
+    setIsSubmitting(false);
+    setIsAddingTask(false);
+  };
+
   const updateTask = async (id: string, title: string, content: string) => {
     setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, title, content } : t)));
     await supabase.from("tasks").update({ title, content }).eq("id", id);
   };
 
-  const deleteTask = async (id: string) => {
-    setTasks((prev) => prev.filter((t) => t.id !== id));
-    await supabase.from("tasks").delete().eq("id", id);
+  const restoreTask = async (id: string) => {
+    const task = tasks.find(t => t.id === id);
+    if (!task) return;
+
+    // Determine target column: either the previous one or the first active one
+    const targetColId = task.previous_column_id;
+    const targetCol = columns.find(c => c.id === targetColId && !c.archived_at);
+    
+    const firstActive = columns.find(c => !c.archived_at && !c.is_archive_pool);
+    const finalTargetId = targetCol ? targetCol.id : firstActive?.id;
+
+    if (!finalTargetId) return;
+
+    setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, column_id: finalTargetId, archived_at: null, previous_column_id: null, position: 0 } : t)));
+    await supabase.from("tasks").update({ column_id: finalTargetId, archived_at: null, previous_column_id: null, position: 0 }).eq("id", id);
   };
 
-  const addColumn = async () => {
-    const title = `Column ${columns.length + 1}`;
-    const colors = ["zinc", "blue", "rose", "emerald", "amber", "indigo", "violet", "cyan", "teal", "fuchsia", "orange"];
-    const color = colors[columns.length % colors.length];
-    const newPos = columns.length > 0 ? columns[columns.length - 1].position + 1 : 0;
+  const addColumn = async (title: string, color: string) => {
+    // New column should go before the "Archived" column
+    // The "Archived" column should always be at the highest position
+    const archivePool = columns.find(c => c.is_archive_pool);
+    const regularCols = columns.filter(c => !c.is_archive_pool);
+    const newPos = regularCols.length;
 
     const { data } = await supabase
       .from("columns")
@@ -277,13 +272,68 @@ export default function KanbanBoard({ projectId }: KanbanBoardProps) {
       .select()
       .single();
 
-    if (data) setColumns((prev) => [...prev, data]);
+    if (data) {
+      // If we have an archive pool, we need to make sure it's still at the end
+      if (archivePool) {
+        const updatedPool = { ...archivePool, position: newPos + 1 };
+        setColumns([...regularCols, data, updatedPool]);
+        // Update archive pool position in DB too
+        await supabase.from("columns").update({ position: newPos + 1 }).eq("id", archivePool.id);
+      } else {
+        setColumns([...regularCols, data]);
+      }
+      if (!selectedColumnId) setSelectedColumnId(data.id);
+    }
   };
 
-  const deleteColumn = async (id: string) => {
+  const handleGlobalAddColumn = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    const trimTitle = newColumnTitle.trim();
+    if (!trimTitle) return;
+
+    setIsSubmitting(true);
+    await addColumn(trimTitle, newColumnColor);
+    setNewColumnTitle("");
+    setNewColumnColor("zinc");
+    setIsSubmitting(false);
+    setIsAddingColumn(false);
+  };
+
+  const deleteTask = async (id: string) => {
+    const task = tasks.find(t => t.id === id);
+    if (!task) return;
+
+    const column = columns.find(c => c.id === task.column_id);
+    const archivePool = columns.find(c => c.is_archive_pool);
+
+    if (column?.is_archive_pool) {
+      // Hard delete if already in archive
+      setTasks((prev) => prev.filter((t) => t.id !== id));
+      await supabase.from("tasks").delete().eq("id", id);
+    } else if (archivePool) {
+      // Soft delete: move to archive pool, set archived_at, and remember current column
+      const now = new Date().toISOString();
+      const currentColumnId = task.column_id;
+      const updatedTask = { ...task, column_id: archivePool.id, archived_at: now, previous_column_id: currentColumnId, position: 0 };
+      setTasks((prev) => [updatedTask, ...prev.filter((t) => t.id !== id)]);
+      await supabase.from("tasks").update({ column_id: archivePool.id, archived_at: now, previous_column_id: currentColumnId, position: 0 }).eq("id", id);
+    } else {
+      // Fallback to hard delete if no archive pool (though we ensure it exists)
+      setTasks((prev) => prev.filter((t) => t.id !== id));
+      await supabase.from("tasks").delete().eq("id", id);
+    }
+  };
+
+  const archiveColumn = async (id: string) => {
+    const column = columns.find(c => c.id === id);
+    if (!column || column.is_archive_pool) return;
+
+    const now = new Date().toISOString();
     setColumns((prev) => prev.filter((c) => c.id !== id));
-    setTasks((prev) => prev.filter((t) => t.column_id !== id));
-    await supabase.from("columns").delete().eq("id", id);
+    // Tasks in this column are NOT automatically archived, they just become inaccessible via this board
+    // until we decide if we want to move them. Common pattern is to let them be.
+    if (selectedColumnId === id) setSelectedColumnId("");
+    await supabase.from("columns").update({ archived_at: now }).eq("id", id);
   };
 
   const updateColumnColor = async (id: string, color: string) => {
@@ -300,122 +350,11 @@ export default function KanbanBoard({ projectId }: KanbanBoardProps) {
     useSensor(PointerSensor, { activationConstraint: { distance: 5, delay: 0, tolerance: 5 } })
   );
 
-  // Custom collision detection to handle scaled/translated canvas
   const customCollisionDetection: CollisionDetection = (args) => {
-    // Standard intersections first (useful for finding the primary target)
-    const cornersIntersections = closestCorners(args);
-    
-    // If we're not scaling or panning much, let the default handle it
-    if (Math.abs(style.scale.get() - 1) < 0.05 && Math.abs(style.x.get()) < 10 && Math.abs(style.y.get()) < 10) {
-        return cornersIntersections;
-    }
-
-    if (!args.active || !args.collisionRect) return cornersIntersections;
-
-    const scale = style.scale.get();
-    const panX = style.x.get();
-    const panY = style.y.get();
-
-    // The collision rect from dnd-kit is in screen coordinates.
-    // We need to map it back to canvas coordinates to find true intersections.
-    const activeRect = {
-      top: (args.collisionRect.top - panY) / scale,
-      left: (args.collisionRect.left - panX) / scale,
-      bottom: (args.collisionRect.bottom - panY) / scale,
-      right: (args.collisionRect.right - panX) / scale,
-      width: args.collisionRect.width / scale,
-      height: args.collisionRect.height / scale,
-    };
-
-    let closestId: string | number | null = null;
-    let minDistance = Infinity;
-
-    // Manually check distance to all droppable rects in the transformed space
-    for (const droppableContainer of args.droppableContainers) {
-      const { id, rect } = droppableContainer;
-      if (!rect.current) continue;
-
-      const dropRect = {
-        top: (rect.current.top - panY) / scale,
-        left: (rect.current.left - panX) / scale,
-        bottom: (rect.current.bottom - panY) / scale,
-        right: (rect.current.right - panX) / scale,
-      };
-
-      // Calculate distance between centers
-      const activeCenterX = activeRect.left + activeRect.width / 2;
-      const activeCenterY = activeRect.top + activeRect.height / 2;
-      
-      const dropCenterX = dropRect.left + (dropRect.right - dropRect.left) / 2;
-      const dropCenterY = dropRect.top + (dropRect.bottom - dropRect.top) / 2;
-
-      const distance = Math.sqrt(
-        Math.pow(activeCenterX - dropCenterX, 2) + Math.pow(activeCenterY - dropCenterY, 2)
-      );
-
-      // Add a strong bias towards tasks over columns if dragging a task
-      const isTaskContainer = String(id).includes('-'); // Heuristic: task IDs usually have hyphens, column IDs might too but we can check data
-      const bias = isTaskContainer ? 1 : 1.5;
-
-      if (distance * bias < minDistance) {
-        minDistance = distance * bias;
-        closestId = id;
-      }
-    }
-
-    if (closestId) {
-      return [{ id: closestId, data: { droppableContainer: args.droppableContainers.find(c => c.id === closestId) } }];
-    }
-
-    return cornersIntersections;
+    return closestCorners(args);
   };
-
-  // Auto-pan logic during dragging
-  const isDraggingItem = useRef(false);
-  const pointerPos = useRef({ x: 0, y: 0 });
-  const rAF = useRef<number | null>(null);
-
-  const autoPanLoop = () => {
-    if (!isDraggingItem.current) {
-      if (rAF.current) cancelAnimationFrame(rAF.current);
-      return;
-    }
-
-    const { innerWidth, innerHeight } = window;
-    const { x, y } = pointerPos.current;
-    
-    let dx = 0;
-    let dy = 0;
-
-    if (x < PAN_EDGE_ZONE) dx = PAN_SPEED; // Pan left (move canvas right)
-    else if (x > innerWidth - PAN_EDGE_ZONE) dx = -PAN_SPEED; // Pan right
-    
-    if (y < PAN_EDGE_ZONE) dy = PAN_SPEED; // Pan up
-    else if (y > innerHeight - PAN_EDGE_ZONE) dy = -PAN_SPEED; // Pan down
-
-    if (dx !== 0 || dy !== 0) {
-      const nextX = currentPos.current.x + dx;
-      const nextY = currentPos.current.y + dy;
-      const bounded = getBoundedPosition(nextX, nextY);
-      currentPos.current = bounded;
-      api.set({ x: bounded.x, y: bounded.y }); // Use api.set for zero-latency frame updates
-    }
-
-    rAF.current = requestAnimationFrame(autoPanLoop);
-  };
-
-  useEffect(() => {
-    const handlePointerMove = (e: PointerEvent) => {
-      pointerPos.current = { x: e.clientX, y: e.clientY };
-    };
-    window.addEventListener("pointermove", handlePointerMove);
-    return () => window.removeEventListener("pointermove", handlePointerMove);
-  }, []);
 
   function onDragStart(event: DragStartEvent) {
-    isDraggingItem.current = true;
-    if (!rAF.current) rAF.current = requestAnimationFrame(autoPanLoop);
-
     if (event.active.data.current?.type === "Column") {
       setActiveColumn(event.active.data.current.column);
       return;
@@ -441,7 +380,6 @@ export default function KanbanBoard({ projectId }: KanbanBoardProps) {
 
     if (!isActiveTask) return;
 
-    // Dropping a Task over another Task
     if (isActiveTask && isOverTask) {
       setTasks((tasks) => {
         const activeIndex = tasks.findIndex((t) => t.id === activeId);
@@ -457,7 +395,6 @@ export default function KanbanBoard({ projectId }: KanbanBoardProps) {
       });
     }
 
-    // Dropping a Task over an empty Column
     if (isActiveTask && isOverColumn) {
       setTasks((tasks) => {
         const activeIndex = tasks.findIndex((t) => t.id === activeId);
@@ -469,12 +406,6 @@ export default function KanbanBoard({ projectId }: KanbanBoardProps) {
   }
 
   async function onDragEnd(event: DragEndEvent) {
-    isDraggingItem.current = false;
-    if (rAF.current) {
-      cancelAnimationFrame(rAF.current);
-      rAF.current = null;
-    }
-
     setActiveColumn(null);
     setActiveTask(null);
 
@@ -489,13 +420,24 @@ export default function KanbanBoard({ projectId }: KanbanBoardProps) {
     const isActiveColumn = active.data.current?.type === "Column";
     if (isActiveColumn) {
       const activeColIndex = columns.findIndex((col) => col.id === activeId);
+      const overColId = overId.toString();
       const overColIndex = columns.findIndex((col) => col.id === overId);
       
-      const newColumns = arrayMove(columns, activeColIndex, overColIndex);
+      const overCol = columns[overColIndex];
+      // Prevent dragging a regular column AFTER the archive pool
+      // Or prevent dragging the archive pool itself if we wanted (but Column.tsx already prevents dragging handle)
       
-      // Update local state and DB positions
-      setColumns(newColumns.map((col, idx) => ({ ...col, position: idx })));
-      for (const [idx, col] of newColumns.entries()) {
+      const newColumns = arrayMove(columns, activeColIndex, overColIndex);
+
+      // Final sanity check to ensure archive_pool is last
+      const finalColumns = [...newColumns].sort((a, b) => {
+        if (a.is_archive_pool) return 1;
+        if (b.is_archive_pool) return -1;
+        return 0; // Maintain relative order from arrayMove
+      });
+
+      setColumns(finalColumns.map((col, idx) => ({ ...col, position: idx })));
+      for (const [idx, col] of finalColumns.entries()) {
         supabase.from("columns").update({ position: idx }).eq("id", col.id).then();
       }
       return;
@@ -507,8 +449,7 @@ export default function KanbanBoard({ projectId }: KanbanBoardProps) {
       if (!activeObj) return;
 
       const colTasks = tasks.filter((t) => t.column_id === activeObj.column_id);
-      
-      // Update local and remote DB task positions and column_ids
+
       for (const [idx, tsk] of colTasks.entries()) {
         if (tsk.id === activeId) {
           supabase.from("tasks").update({ column_id: activeObj.column_id, position: idx }).eq("id", activeId).then();
@@ -519,6 +460,25 @@ export default function KanbanBoard({ projectId }: KanbanBoardProps) {
     }
   }
 
+  // Focus/Select input when modals open
+  useEffect(() => {
+    if (isAddingTask) {
+      setTimeout(() => {
+        addTitleInputRef.current?.focus();
+        addTitleInputRef.current?.select();
+      }, 50);
+    }
+  }, [isAddingTask]);
+
+  useEffect(() => {
+    if (isAddingColumn) {
+      setTimeout(() => {
+        columnTitleInputRef.current?.focus();
+        columnTitleInputRef.current?.select();
+      }, 50);
+    }
+  }, [isAddingColumn]);
+
   if (isLoading) {
     return (
       <div className="flex-1 flex items-center justify-center">
@@ -527,110 +487,337 @@ export default function KanbanBoard({ projectId }: KanbanBoardProps) {
     );
   }
 
+  const openGlobalAddTask = (columnId?: string) => {
+    if (columnId) {
+      setSelectedColumnId(columnId);
+    } else if (columns.length > 0 && !selectedColumnId) {
+      setSelectedColumnId(columns[0].id);
+    }
+    setIsAddingTask(true);
+  };
+
   return (
-    <div 
-      ref={containerRef}
-      id="kanban-container"
-      className="flex flex-col h-full w-full min-w-0 overflow-hidden touch-none relative"
-      style={{ touchAction: 'none' }} // Prevent browser interference with pinch/pan
-      onScroll={(e) => {
-        // Prevent native browser focus from shifting the strictly bounded layout
-        e.currentTarget.scrollTop = 0;
-        e.currentTarget.scrollLeft = 0;
-      }}
-    >
-      <DndContext
-        sensors={sensors}
-        collisionDetection={customCollisionDetection}
-        onDragStart={onDragStart}
-        onDragOver={onDragOver}
-        onDragEnd={onDragEnd}
-        autoScroll={false}
-      >
-        <animated.div 
-            ref={contentRef}
-            style={{ 
-                x: style.x, 
-                y: style.y, 
-                scale: style.scale, 
-                transformOrigin: '0 0' 
-            }}
-            className="flex gap-6 items-start pr-8 pb-8 origin-top-left w-max h-max min-w-full min-h-full"
-        >
-          <SortableContext items={columnsId} strategy={horizontalListSortingStrategy}>
-            {columns.map((col) => (
-              <Column
-                key={col.id}
-                column={col}
-                tasks={tasks.filter((t) => t.column_id === col.id)}
-                deleteColumn={deleteColumn}
-                deleteTask={deleteTask}
-                addTask={addTask}
-                updateTask={updateTask}
-                updateColumnColor={updateColumnColor}
-                updateColumnTitle={updateColumnTitle}
-              />
-            ))}
-          </SortableContext>
+    <div className="flex flex-col h-full w-full min-w-0 overflow-hidden touch-none relative">
+      {/* Canvas Header Bar */}
+      <div className="flex items-center justify-between px-6 py-3 border-b border-zinc-200 dark:border-zinc-800 bg-white/80 dark:bg-zinc-950/80 backdrop-blur-md z-[60]">
+        <div className="flex items-center gap-4">
+          <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
+            <Columns className="w-4 h-4 text-zinc-500" />
+            {projectName || "Board Canvas"}
+          </h2>
+          <div className="h-4 w-px bg-zinc-200 dark:bg-zinc-800" />
+          <span className="text-xs text-zinc-500 font-medium">{columns.length} Columns • {tasks.length} Tasks</span>
+        </div>
 
+        <div className="flex items-center gap-2">
           <button
-            onClick={addColumn}
-            className="w-80 shrink-0 h-[60px] flex items-center justify-center gap-2 border-2 border-dashed border-zinc-200 dark:border-zinc-800 rounded-2xl text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:border-zinc-300 dark:hover:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-900/50 transition-all cursor-pointer"
+            onClick={() => openGlobalAddTask()}
+            disabled={columns.length === 0}
+            className="flex items-center gap-2 px-3 py-1.5 text-xs font-semibold bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 rounded-lg hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
           >
-            <Plus className="w-5 h-5" />
-            <span className="font-medium text-sm">Add another column</span>
+            <Plus className="w-3.5 h-3.5" />
+            Add Task
           </button>
-        </animated.div>
-
-        {typeof window !== "undefined" &&
-          createPortal(
-            <DragOverlay>
-              {activeColumn && (
-                <Column
-                  column={activeColumn}
-                  tasks={tasks.filter((t) => t.column_id === activeColumn.id)}
-                  deleteColumn={deleteColumn}
-                  deleteTask={deleteTask}
-                  addTask={addTask}
-                  updateTask={updateTask}
-                  updateColumnColor={updateColumnColor}
-                  updateColumnTitle={updateColumnTitle}
-                  isOverlay
-                />
-              )}
-              {activeTask && <TaskCard task={activeTask} deleteTask={deleteTask} isOverlay />}
-            </DragOverlay>,
-            document.body
-          )}
-      </DndContext>
-
-      {/* Navigation Controls */}
-      <div className="absolute bottom-6 right-6 flex items-center gap-2 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl p-1.5 shadow-sm select-none z-50">
-        <button
-          onClick={handleZoomOut}
-          className="p-2 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-900 rounded-lg transition-colors"
-          title="Zoom Out"
-        >
-          <ZoomOut className="w-5 h-5" />
-        </button>
-        <button
-          onClick={handleZoomIn}
-          className="p-2 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-900 rounded-lg transition-colors"
-          title="Zoom In"
-        >
-          <ZoomIn className="w-5 h-5" />
-        </button>
-        <div className="w-px h-6 bg-zinc-200 dark:bg-zinc-800 mx-1" />
-        <button
-          onClick={handleResetView}
-          className="px-3 py-2 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-900 rounded-lg transition-colors flex items-center justify-center min-w-[70px]"
-          title="Reset View"
-        >
-          <animated.span className="text-xs font-semibold tabular-nums">
-            {style.scale.to((s) => `${Math.round(s * 100)}%`)}
-          </animated.span>
-        </button>
+          <button
+            onClick={() => setIsAddingColumn(true)}
+            className="flex items-center gap-2 px-3 py-1.5 text-xs font-semibold bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 border border-zinc-200 dark:border-zinc-800 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-all shadow-sm cursor-pointer"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            Add Column
+          </button>
+        </div>
       </div>
+
+      <TransformWrapper
+        initialScale={1}
+        minScale={0.1}
+        maxScale={2}
+        wheel={{ step: 0.08 }}
+        pinch={{ step: 5 }}
+        doubleClick={{ disabled: true }}
+        panning={{
+          excluded: ["no-pan", "input", "textarea", "button", "select"],
+          velocityDisabled: true,
+        }}
+        limitToBounds={false}
+      >
+        <TransformComponent
+          wrapperStyle={{ width: "100%", height: "100%", overflow: "hidden" }}
+          contentStyle={{ width: "max-content", height: "max-content", padding: "80px 32px 300px 32px" }}
+        >
+          <DndContext
+            sensors={sensors}
+            collisionDetection={customCollisionDetection}
+            onDragStart={onDragStart}
+            onDragOver={onDragOver}
+            onDragEnd={onDragEnd}
+            autoScroll={false}
+          >
+            <div className="flex gap-6 items-start">
+              <SortableContext items={columnsId} strategy={horizontalListSortingStrategy}>
+                {columns.map((col) => (
+                  <Column
+                    key={col.id}
+                    column={col}
+                    tasks={tasks.filter((t) => t.column_id === col.id)}
+                    archiveColumn={archiveColumn}
+                    deleteTask={deleteTask}
+                    restoreTask={async (id) => {
+                      await restoreTask(id);
+                    }}
+                    addTask={addTask}
+                    onAddTaskClick={() => {
+                      setSelectedColumnId(col.id);
+                      setIsAddingTask(true);
+                    }}
+                    updateTask={updateTask}
+                    updateColumnColor={updateColumnColor}
+                    updateColumnTitle={updateColumnTitle}
+                  />
+                ))}
+              </SortableContext>
+
+              <button
+                onClick={() => setIsAddingColumn(true)}
+                className="no-pan w-80 shrink-0 h-[60px] flex items-center justify-center gap-2 border-2 border-dashed border-zinc-200 dark:border-zinc-800 rounded-2xl text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:border-zinc-300 dark:hover:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-900/50 transition-all cursor-pointer group"
+              >
+                <Plus className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                <span className="font-medium text-sm">Add another column</span>
+              </button>
+            </div>
+
+            {typeof window !== "undefined" &&
+              createPortal(
+                <DragOverlay>
+                  {activeColumn && (
+                    <Column
+                      column={activeColumn}
+                      tasks={tasks.filter((t) => t.column_id === activeColumn.id)}
+                      archiveColumn={() => {}}
+                      deleteTask={() => {}}
+                      restoreTask={async () => {}}
+                      addTask={async () => {}}
+                      updateTask={updateTask}
+                      updateColumnColor={updateColumnColor}
+                      updateColumnTitle={updateColumnTitle}
+                      isOverlay
+                    />
+                  )}
+                  {activeTask && <TaskCard task={activeTask} deleteTask={deleteTask} isOverlay />}
+                </DragOverlay>,
+                document.body
+              )}
+          </DndContext>
+        </TransformComponent>
+
+        {/* Navigation Controls */}
+        <ZoomControls />
+      </TransformWrapper>
+
+      {/* Global Add Task Modal — portalled to document.body */}
+      {isAddingTask && typeof window !== "undefined" && createPortal(
+        <div
+          className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 backdrop-blur-[2px] px-4"
+          onPointerDown={(e) => e.stopPropagation()}
+        >
+          <div
+            className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl w-full max-w-md flex flex-col gap-4 p-6"
+            onKeyDown={(e) => {
+              if (e.key === "Escape") {
+                setIsAddingTask(false);
+                setNewTaskTitle("");
+                setNewTaskContent("");
+              }
+            }}
+          >
+            {/* Modal header */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-zinc-900 dark:text-zinc-100 font-semibold">
+                <Plus className="w-4 h-4" />
+                <h2>Create New Task</h2>
+              </div>
+              <button
+                onClick={() => {
+                  setIsAddingTask(false);
+                  setNewTaskTitle("");
+                  setNewTaskContent("");
+                }}
+                className="p-1.5 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Fields */}
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-col gap-1.5">
+                <label className="flex items-center gap-1.5 text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
+                  Select Column
+                </label>
+                <select
+                  value={selectedColumnId}
+                  onChange={(e) => setSelectedColumnId(e.target.value)}
+                  className="w-full px-3 py-2 text-sm bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-zinc-200 dark:focus:ring-zinc-800 transition-all text-zinc-900 dark:text-zinc-100 outline-none"
+                >
+                  {columns.map((col) => (
+                    <option key={col.id} value={col.id}>
+                      {col.title}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="flex items-center gap-1.5 text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
+                  <LayoutList className="w-3 h-3" />
+                  Task Title
+                </label>
+                <input
+                  ref={addTitleInputRef}
+                  value={newTaskTitle}
+                  onChange={(e) => setNewTaskTitle(e.target.value)}
+                  className="w-full px-3 py-2 text-sm bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-zinc-200 dark:focus:ring-zinc-800 transition-all text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 outline-none"
+                  placeholder="What needs to be done?"
+                />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="flex items-center gap-1.5 text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
+                  <AlignLeft className="w-3 h-3" />
+                  Description
+                </label>
+                <textarea
+                  value={newTaskContent}
+                  onChange={(e) => setNewTaskContent(e.target.value)}
+                  placeholder="Add some details..."
+                  rows={4}
+                  className="w-full px-3 py-2 text-sm bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-zinc-200 dark:focus:ring-zinc-800 transition-all text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 resize-none outline-none"
+                />
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center justify-end gap-3 mt-2">
+              <button
+                onClick={() => {
+                  setIsAddingTask(false);
+                  setNewTaskTitle("");
+                  setNewTaskContent("");
+                }}
+                className="px-4 cursor-pointer py-2 text-sm font-semibold text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleGlobalAddTask()}
+                disabled={isSubmitting || (!newTaskTitle.trim() && !newTaskContent.trim())}
+                className="flex items-center gap-2 px-6 py-2 text-sm font-bold bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 rounded-xl hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                Create Task
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+      {/* Global Add Column Modal — portalled to document.body */}
+      {isAddingColumn && typeof window !== "undefined" && createPortal(
+        <div
+          className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 backdrop-blur-[2px] px-4"
+          onPointerDown={(e) => e.stopPropagation()}
+        >
+          <div
+            className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl w-full max-w-sm flex flex-col gap-4 p-6"
+            onKeyDown={(e) => {
+              if (e.key === "Escape") {
+                setIsAddingColumn(false);
+                setNewColumnTitle("");
+                setNewColumnColor("zinc");
+              }
+            }}
+          >
+            {/* Modal header */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-zinc-900 dark:text-zinc-100 font-semibold">
+                <Columns className="w-4 h-4 text-zinc-500" />
+                <h2>Add New Column</h2>
+              </div>
+              <button
+                onClick={() => {
+                  setIsAddingColumn(false);
+                  setNewColumnTitle("");
+                  setNewColumnColor("zinc");
+                }}
+                className="p-1.5 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Fields */}
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-col gap-1.5">
+                <label className="flex items-center gap-1.5 text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
+                  Column Name
+                </label>
+                <input
+                  ref={columnTitleInputRef}
+                  autoFocus
+                  value={newColumnTitle}
+                  onChange={(e) => setNewColumnTitle(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleGlobalAddColumn();
+                  }}
+                  className="w-full px-3 py-2 text-sm bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-zinc-200 dark:focus:ring-zinc-800 transition-all text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 outline-none"
+                  placeholder="e.g. In Progress, Done..."
+                />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="flex items-center gap-1.5 text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
+                  Theme Color
+                </label>
+                <div className="grid grid-cols-6 gap-2 pt-1">
+                  {AVAILABLE_COLORS.map((color) => (
+                    <button
+                      key={color}
+                      onClick={() => setNewColumnColor(color)}
+                      className={`w-full aspect-square rounded-full ${DOT_COLOR_MAP[color]} hover:scale-110 transition-transform flex items-center justify-center cursor-pointer ${newColumnColor === color ? 'ring-2 ring-offset-2 ring-zinc-400 dark:ring-zinc-600 dark:ring-offset-zinc-950 shadow-sm' : ''}`}
+                      title={color}
+                    >
+                      {newColumnColor === color && <Check className="w-3 h-3 text-white" />}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center justify-end gap-3 mt-2">
+              <button
+                onClick={() => {
+                  setIsAddingColumn(false);
+                  setNewColumnTitle("");
+                  setNewColumnColor("zinc");
+                }}
+                className="px-4 py-2 text-sm font-semibold text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleGlobalAddColumn()}
+                disabled={isSubmitting || !newColumnTitle.trim()}
+                className="flex items-center gap-2 px-6 py-2 text-sm font-bold bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 rounded-xl hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+              >
+                {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                Create Column
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 }

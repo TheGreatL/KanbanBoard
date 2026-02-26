@@ -10,7 +10,8 @@ CREATE TABLE projects (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id UUID REFERENCES auth.users ON DELETE CASCADE NOT NULL,
   title TEXT NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT NOW()
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  archived_at TIMESTAMPTZ DEFAULT NULL
 );
 
 -- Columns
@@ -20,7 +21,9 @@ CREATE TABLE columns (
   title TEXT NOT NULL,
   color TEXT NOT NULL DEFAULT 'zinc', -- E.g. 'zinc', 'blue', 'rose'
   position INTEGER NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT NOW()
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  archived_at TIMESTAMPTZ DEFAULT NULL,
+  is_archive_pool BOOLEAN DEFAULT FALSE
 );
 
 -- Tasks
@@ -29,7 +32,9 @@ CREATE TABLE tasks (
   column_id UUID REFERENCES columns ON DELETE CASCADE NOT NULL,
   content TEXT NOT NULL,
   position INTEGER NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT NOW()
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  archived_at TIMESTAMPTZ DEFAULT NULL,
+  previous_column_id UUID REFERENCES columns(id) ON DELETE SET NULL
 );
 
 -- RLS Policies
