@@ -6,6 +6,7 @@ import TaskCard, { Task } from "./TaskCard";
 import { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
+import { Tooltip } from "./ui/Tooltip";
 
 export interface ColumnType {
   id: string;
@@ -29,6 +30,7 @@ interface ColumnProps {
   updateColumnColor?: (columnId: string, color: string) => Promise<void>;
   updateColumnTitle?: (columnId: string, title: string) => Promise<void>;
   isOverlay?: boolean;
+  remoteDragging?: { taskId: string; columnId: string; username: string }[];
 }
 
 const AVAILABLE_COLORS = ["zinc", "blue", "rose", "emerald", "amber", "indigo", "violet", "cyan", "teal", "fuchsia", "orange"];
@@ -100,6 +102,7 @@ export default function Column({
   updateColumnColor,
   updateColumnTitle,
   isOverlay,
+  remoteDragging = [],
 }: ColumnProps) {
   const [showColorPicker, setShowColorPicker] = useState(false);
   const colorPickerRef = useRef<HTMLDivElement>(null);
@@ -179,31 +182,33 @@ export default function Column({
         <div className="no-pan p-4 flex items-center gap-2 border-b border-zinc-200/50 dark:border-zinc-800/50 relative group/header">
           {/* Drag handle */}
           {!column.is_archive_pool && (
-            <div
-              {...attributes}
-              {...listeners}
-              className="text-zinc-300 dark:text-zinc-700 hover:text-zinc-500 dark:hover:text-zinc-400 cursor-grab active:cursor-grabbing shrink-0 flex items-center transition-colors"
-              title="Drag to reorder column"
-            >
-              <GripVertical className="w-4 h-4" />
-            </div>
+            <Tooltip text="Drag to reorder column">
+              <div
+                {...attributes}
+                {...listeners}
+                className="text-zinc-300 dark:text-zinc-700 hover:text-zinc-500 dark:hover:text-zinc-400 cursor-grab active:cursor-grabbing shrink-0 flex items-center transition-colors"
+              >
+                <GripVertical className="w-4 h-4" />
+              </div>
+            </Tooltip>
           )}
 
           {/* Color dot + picker */}
           <div className="relative shrink-0" ref={colorPickerRef} onPointerDown={(e) => e.stopPropagation()}>
-            <button
-              onPointerDown={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                setShowColorPicker((prev) => !prev);
-              }}
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={(e) => e.stopPropagation()}
-              className="p-1 -ml-1 hover:bg-zinc-200 dark:hover:bg-zinc-800 rounded-md transition-colors cursor-pointer flex items-center justify-center opacity-80 hover:opacity-100 outline-none"
-              title="Change column color"
-            >
-              <div className={`w-2.5 h-2.5 rounded-full ${dotColorClass}`} />
-            </button>
+            <Tooltip text="Change column color">
+              <button
+                onPointerDown={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setShowColorPicker((prev) => !prev);
+                }}
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={(e) => e.stopPropagation()}
+                className="p-1 -ml-1 hover:bg-zinc-200 dark:hover:bg-zinc-800 rounded-md transition-colors cursor-pointer flex items-center justify-center opacity-80 hover:opacity-100 outline-none"
+              >
+                <div className={`w-2.5 h-2.5 rounded-full ${dotColorClass}`} />
+              </button>
+            </Tooltip>
 
             {showColorPicker && (
               <div
@@ -212,17 +217,17 @@ export default function Column({
                 onPointerDown={(e) => e.stopPropagation()}
               >
                 {AVAILABLE_COLORS.map((color) => (
-                  <button
-                    key={color}
-                    onPointerDown={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      handleColorSelect(color);
-                    }}
-                    onClick={(e) => e.stopPropagation()}
-                    className={`w-4 h-4 rounded-full ${DOT_COLOR_MAP[color]} hover:scale-110 transition-transform ${column.color === color ? 'ring-2 ring-offset-1 ring-zinc-400 dark:ring-zinc-600 dark:ring-offset-zinc-950' : ''}`}
-                    title={color}
-                  />
+                    <Tooltip key={color} text={color}>
+                      <button
+                        onPointerDown={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleColorSelect(color);
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                        className={`w-4 h-4 rounded-full ${DOT_COLOR_MAP[color]} hover:scale-110 transition-transform ${column.color === color ? 'ring-2 ring-offset-1 ring-zinc-400 dark:ring-zinc-600 dark:ring-offset-zinc-950' : ''}`}
+                      />
+                    </Tooltip>
                 ))}
               </div>
             )}
@@ -250,22 +255,23 @@ export default function Column({
                 />
               </form>
             ) : (
-              <h3
-                className={cn(
-                  "font-semibold text-zinc-900 dark:text-zinc-100 text-sm truncate rounded px-1.5 py-0.5 -ml-1.5 transition-colors",
-                  !column.is_archive_pool && "cursor-pointer hover:bg-zinc-200/50 dark:hover:bg-zinc-800/50"
-                )}
-                onClick={(e) => {
-                  if (column.is_archive_pool) return;
-                  e.stopPropagation();
-                  setIsEditingTitle(true);
-                  setEditTitle(column.title);
-                }}
-                onPointerDown={(e) => e.stopPropagation()}
-                title={column.is_archive_pool ? "" : "Click to edit name"}
-              >
-                {column.title}
-              </h3>
+              <Tooltip text={column.is_archive_pool ? "" : "Click to edit name"} disabled={column.is_archive_pool}>
+                <h3
+                  className={cn(
+                    "font-semibold text-zinc-900 dark:text-zinc-100 text-sm truncate rounded px-1.5 py-0.5 -ml-1.5 transition-colors",
+                    !column.is_archive_pool && "cursor-pointer hover:bg-zinc-200/50 dark:hover:bg-zinc-800/50"
+                  )}
+                  onClick={(e) => {
+                    if (column.is_archive_pool) return;
+                    e.stopPropagation();
+                    setIsEditingTitle(true);
+                    setEditTitle(column.title);
+                  }}
+                  onPointerDown={(e) => e.stopPropagation()}
+                >
+                  {column.title}
+                </h3>
+              </Tooltip>
             )}
           </div>
 
@@ -274,18 +280,19 @@ export default function Column({
           </span>
 
           {!column.is_archive_pool && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setIsDeleteDialogOpen(true);
-              }}
-              onPointerDown={(e) => e.stopPropagation()}
-              onMouseDown={(e) => e.preventDefault()}
-              className="shrink-0 opacity-0 group-hover/header:opacity-100 text-zinc-400 hover:text-red-500 transition-opacity p-1 rounded-md hover:bg-zinc-200 dark:hover:bg-zinc-800 cursor-pointer"
-              title="Archive column"
-            >
-              <Trash2 className="w-4 h-4" />
-            </button>
+              <Tooltip text="Archive column">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsDeleteDialogOpen(true);
+                  }}
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onMouseDown={(e) => e.preventDefault()}
+                  className="shrink-0 opacity-0 group-hover/header:opacity-100 text-zinc-400 hover:text-red-500 transition-opacity p-1 rounded-md hover:bg-zinc-200 dark:hover:bg-zinc-800 cursor-pointer"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </Tooltip>
           )}
         </div>
 
@@ -296,6 +303,7 @@ export default function Column({
               <TaskCard
                 key={task.id}
                 task={task}
+                columnColor={column.color}
                 deleteTask={deleteTask}
                 updateTask={updateTask}
                 restoreTask={column.is_archive_pool ? restoreTask : undefined}
@@ -303,7 +311,20 @@ export default function Column({
             ))}
           </SortableContext>
 
-          {tasks.length === 0 && (
+          {/* Remote Dragging Indicators (Ghost Cards) */}
+          {remoteDragging.map((dragging, idx) => (
+            <div
+              key={`dragging-${idx}`}
+              className="p-3 bg-indigo-50/50 dark:bg-indigo-950/20 border border-dashed border-indigo-200 dark:border-indigo-800 rounded-xl animate-pulse flex items-center gap-2 mt-2"
+            >
+              <div className="w-2 h-2 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.6)]" />
+              <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-medium italic truncate">
+                {dragging.username} is moving a task here...
+              </span>
+            </div>
+          ))}
+
+          {tasks.length === 0 && remoteDragging.length === 0 && (
             <div className="flex flex-col items-center justify-center py-6 text-zinc-400 dark:text-zinc-600 gap-1.5">
               <LayoutList className="w-5 h-5 opacity-50" />
               <p className="text-xs">No tasks yet</p>
@@ -372,10 +393,10 @@ export default function Column({
                   archiveColumn(column.id);
                   setIsDeleteDialogOpen(false);
                 }}
-                className="flex items-center gap-1.5 px-4 py-2 text-xs bg-amber-500 text-white font-medium rounded-lg hover:bg-amber-500/90 transition-colors cursor-pointer"
+                className="flex items-center gap-1.5 px-5 py-2 text-xs bg-amber-500 text-white font-bold rounded-lg hover:bg-amber-600 transition-colors cursor-pointer"
               >
-                <Archive className="w-3.5 h-3.5" />
-                Archive
+                <Check className="w-3.5 h-3.5" />
+                Confirm Archive
               </button>
             </div>
           </div>

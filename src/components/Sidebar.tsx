@@ -1,16 +1,19 @@
-import { Plus, FolderKanban, LogOut, Loader2, Trash2, Pencil, X, Archive, RotateCcw, ChevronRight } from "lucide-react";
+import { Plus, FolderKanban, LogOut, Loader2, Trash2, Pencil, X, Archive, RotateCcw, Check, ChevronRight, Users } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import { Tooltip } from "./ui/Tooltip";
+import { useToast } from "./ui/Toast";
 
 export interface Project {
   id: string;
   title: string;
+  user_id: string;
   archived_at?: string | null;
 }
 
 interface SidebarProps {
   projects: Project[];
-  activeProjectId: string | null;
+	activeProjectId: string | null;
   isLoading: boolean;
   onSelectProject: (id: string) => void;
   onCreateProject: (title: string) => Promise<void>;
@@ -19,6 +22,7 @@ interface SidebarProps {
   onDeleteProject: (id: string) => Promise<void>;
   onUpdateProject: (id: string, title: string) => Promise<void>;
   onLogout: () => void;
+  currentUserId: string | null;
 }
 
 export default function Sidebar({
@@ -32,13 +36,17 @@ export default function Sidebar({
   onDeleteProject,
   onUpdateProject,
   onLogout,
+  currentUserId,
 }: SidebarProps) {
+  const { showToast } = useToast();
   const [isCreating, setIsCreating] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [creatingId, setCreatingId] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState("");
   const [projectToDelete, setProjectToDelete] = useState<string | null>(null);
+  const [projectToArchive, setProjectToArchive] = useState<{ id: string; title: string } | null>(null);
+  const [projectToRestore, setProjectToRestore] = useState<{ id: string; title: string } | null>(null);
   const [isArchivedExpanded, setIsArchivedExpanded] = useState(false);
 
   const activeProjects = projects.filter((p) => !p.archived_at);
@@ -46,21 +54,107 @@ export default function Sidebar({
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newTitle.trim()) return;
+    const title = newTitle.trim();
+    if (!title) return;
     setCreatingId(true);
-    await onCreateProject(newTitle.trim());
-    setNewTitle("");
-    setIsCreating(false);
-    setCreatingId(false);
+    try {
+      await onCreateProject(title);
+      showToast({
+        type: "success",
+        title: "Project Created",
+        message: `"${title}" is ready for your tasks.`,
+      });
+      setNewTitle("");
+      setIsCreating(false);
+    } catch (err) {
+      showToast({
+        type: "error",
+        title: "Creation Failed",
+        message: "Could not create the project.",
+      });
+    } finally {
+      setCreatingId(false);
+    }
   };
 
   const handleUpdate = async (id: string) => {
-    if (!editTitle.trim()) {
+    const title = editTitle.trim();
+    if (!title) {
       setEditingId(null);
       return;
     }
-    await onUpdateProject(id, editTitle.trim());
+    try {
+      await onUpdateProject(id, title);
+      showToast({
+        type: "success",
+        title: "Project Rename",
+        message: `Project renamed to "${title}".`,
+      });
+    } catch (err) {
+      showToast({
+        type: "error",
+        title: "Rename Failed",
+        message: "Could not update project name.",
+      });
+    }
     setEditingId(null);
+  };
+
+  const handleArchive = async (id: string, title: string) => {
+    try {
+      await onArchiveProject(id);
+      showToast({
+        type: "info",
+        title: "Project Archived",
+        message: `"${title}" has been moved to archives.`,
+        action: {
+          label: "Undo",
+          onClick: () => onRestoreProject(id),
+        },
+      });
+    } catch (err) {
+      showToast({
+        type: "error",
+        title: "Archive Failed",
+        message: "Could not archive project.",
+      });
+    }
+    setProjectToArchive(null);
+  };
+
+  const handleRestore = async (id: string, title: string) => {
+    try {
+      await onRestoreProject(id);
+      showToast({
+        type: "success",
+        title: "Project Restored",
+        message: `"${title}" is back in active projects.`,
+      });
+    } catch (err) {
+      showToast({
+        type: "error",
+        title: "Restore Failed",
+        message: "Could not restore project.",
+      });
+    }
+    setProjectToRestore(null);
+  };
+
+  const handleDelete = async (id: string, title: string) => {
+    try {
+      await onDeleteProject(id);
+      showToast({
+        type: "info",
+        title: "Project Deleted",
+        message: `"${title}" and its data have been removed.`,
+      });
+    } catch (err) {
+      showToast({
+        type: "error",
+        title: "Delete Failed",
+        message: "Could not permanently delete project.",
+      });
+    }
   };
 
   const renderProjectItem = (p: Project, isArchived: boolean = false) => (
@@ -93,7 +187,7 @@ export default function Sidebar({
                 e.stopPropagation();
                 if (e.key === "Escape") setEditingId(null);
               }}
-              className="w-full text-sm font-semibold text-zinc-900 dark:text-zinc-100 bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded px-1.5 py-0.5 outline-none focus:ring-1 focus:ring-zinc-400 dark:focus:ring-zinc-600 transition-all"
+              className="w-full text-sm font-semibold text-zinc-900 dark:text-zinc-100 bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded px-1.5 py-0.5 outline-none focus:ring-1 focus:ring-zinc-400 dark:focus:ring-600 transition-all"
               disabled={creatingId}
             />
           </form>
@@ -105,57 +199,64 @@ export default function Sidebar({
               }`}
             />
             {p.title}
+            {p.user_id !== currentUserId && (
+              <Users className="w-2.5 h-2.5 ml-1 text-zinc-400 group-hover:text-zinc-500" />
+            )}
           </span>
         )}
 
         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all ml-2">
           {editingId !== p.id && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setEditingId(p.id);
-                setEditTitle(p.title);
-              }}
-              className="text-zinc-400 hover:text-blue-500 transition-colors p-1 rounded-md hover:bg-zinc-200 dark:hover:bg-zinc-800 cursor-pointer"
-              title="Edit Project"
-            >
-              <Pencil className="w-3.5 h-3.5" />
-            </button>
+            <Tooltip text="Edit Project">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setEditingId(p.id);
+                  setEditTitle(p.title);
+                }}
+                className="text-zinc-400 hover:text-blue-500 transition-colors p-1 rounded-md hover:bg-zinc-200 dark:hover:bg-zinc-800 cursor-pointer"
+              >
+                <Pencil className="w-3.5 h-3.5" />
+              </button>
+            </Tooltip>
           )}
           {isArchived ? (
             <>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onRestoreProject(p.id);
-                }}
-                className="text-zinc-400 hover:text-emerald-500 transition-colors p-1 rounded-md hover:bg-zinc-200 dark:hover:bg-zinc-800 cursor-pointer"
-                title="Restore Project"
-              >
-                <RotateCcw className="w-3.5 h-3.5" />
-              </button>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setProjectToDelete(p.id);
-                }}
-                className="text-zinc-400 hover:text-rose-500 transition-colors p-1 rounded-md hover:bg-zinc-200 dark:hover:bg-zinc-800 cursor-pointer"
-                title="Delete Project Permanently"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
+              <Tooltip text="Restore Project">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setProjectToRestore({ id: p.id, title: p.title });
+                  }}
+                  className="text-zinc-400 hover:text-emerald-500 transition-colors p-1 rounded-md hover:bg-zinc-200 dark:hover:bg-zinc-800 cursor-pointer"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                </button>
+              </Tooltip>
+              <Tooltip text="Delete Project Permanently">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setProjectToDelete(p.id);
+                  }}
+                  className="text-zinc-400 hover:text-rose-500 transition-colors p-1 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </Tooltip>
             </>
           ) : (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onArchiveProject(p.id);
-              }}
-              className="text-zinc-400 hover:text-amber-500 transition-colors p-1 rounded-md hover:bg-zinc-200 dark:hover:bg-zinc-800 cursor-pointer"
-              title="Archive Project"
-            >
-              <Archive className="w-3.5 h-3.5" />
-            </button>
+            <Tooltip text="Archive Project">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setProjectToArchive({ id: p.id, title: p.title });
+                }}
+                className="text-zinc-400 hover:text-amber-500 transition-colors p-1 rounded-md hover:bg-zinc-200 dark:hover:bg-zinc-800 cursor-pointer"
+              >
+                <Archive className="w-3.5 h-3.5" />
+              </button>
+            </Tooltip>
           )}
         </div>
       </div>
@@ -188,7 +289,7 @@ export default function Sidebar({
               value={newTitle}
               onChange={(e) => setNewTitle(e.target.value)}
               onBlur={() => !newTitle && setIsCreating(false)}
-              className="w-full px-3 py-1.5 text-sm bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg focus:outline-none focus:ring-1 focus:ring-zinc-400 dark:focus:ring-zinc-600 transition-all text-zinc-900 dark:text-zinc-100"
+              className="w-full px-3 py-1.5 text-sm bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg focus:outline-none focus:ring-1 focus:ring-zinc-400 dark:focus:ring-600 transition-all text-zinc-900 dark:text-zinc-100"
               placeholder="Project name..."
               disabled={creatingId}
             />
@@ -247,10 +348,108 @@ export default function Sidebar({
         </button>
       </div>
 
+      {/* Archive Project Modal */}
+      {projectToArchive && (
+        <div
+          className="fixed inset-0 z-[203] flex items-center justify-center bg-black/40 backdrop-blur-[2px] px-4"
+          onPointerDown={(e) => e.stopPropagation()}
+        >
+          <div
+            className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl w-full max-w-sm flex flex-col gap-4 p-6 cursor-auto"
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") setProjectToArchive(null);
+            }}
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Archive className="w-4 h-4 text-amber-500" />
+                <h2 className="font-bold text-zinc-900 dark:text-zinc-100 text-base">Archive Project</h2>
+              </div>
+              <button
+                onClick={() => setProjectToArchive(null)}
+                className="p-1.5 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            
+            <p className="text-sm text-zinc-500 dark:text-zinc-400 font-medium leading-relaxed">
+              Move <span className="font-bold text-zinc-900 dark:text-zinc-100">"{projectToArchive.title}"</span> to the archives? You can restore it later if you need to work on it again.
+            </p>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                onClick={() => setProjectToArchive(null)}
+                className="px-4 py-2 text-xs text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors font-bold cursor-pointer rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-900"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleArchive(projectToArchive.id, projectToArchive.title)}
+                className="flex items-center gap-1.5 px-5 py-2 text-xs text-white font-bold bg-amber-500 rounded-lg hover:bg-amber-600 transition-colors cursor-pointer"
+              >
+                <Check className="w-3.5 h-3.5" />
+                Confirm Archive
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Restore Project Modal */}
+      {projectToRestore && (
+        <div
+          className="fixed inset-0 z-[203] flex items-center justify-center bg-black/40 backdrop-blur-[2px] px-4"
+          onPointerDown={(e) => e.stopPropagation()}
+        >
+          <div
+            className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl w-full max-w-sm flex flex-col gap-4 p-6 cursor-auto"
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") setProjectToRestore(null);
+            }}
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <RotateCcw className="w-4 h-4 text-emerald-500" />
+                <h2 className="font-bold text-zinc-900 dark:text-zinc-100 text-base">Restore Project</h2>
+              </div>
+              <button
+                onClick={() => setProjectToRestore(null)}
+                className="p-1.5 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            
+            <p className="text-sm text-zinc-500 dark:text-zinc-400 font-medium leading-relaxed">
+              Restore <span className="font-bold text-zinc-900 dark:text-zinc-100">"{projectToRestore.title}"</span>? It will appear back in your active projects list.
+            </p>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                onClick={() => setProjectToRestore(null)}
+                className="px-4 py-2 text-xs text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors font-bold cursor-pointer rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-900"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleRestore(projectToRestore.id, projectToRestore.title)}
+                className="flex items-center gap-1.5 px-5 py-2 text-xs text-white font-bold bg-emerald-500 rounded-lg hover:bg-emerald-600 transition-colors cursor-pointer"
+              >
+                <Check className="w-3.5 h-3.5" />
+                Restore Project
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Delete Modal */}
       {projectToDelete && (
         <div
-          className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 backdrop-blur-[2px] px-4"
+          className="fixed inset-0 z-[203] flex items-center justify-center bg-black/40 backdrop-blur-[2px] px-4"
           onPointerDown={(e) => e.stopPropagation()}
         >
           <div
@@ -261,7 +460,10 @@ export default function Sidebar({
             }}
           >
             <div className="flex items-center justify-between">
-              <h2 className="font-semibold text-zinc-900 dark:text-zinc-100 text-base">Delete Project</h2>
+              <div className="flex items-center gap-2">
+                <Trash2 className="w-4 h-4 text-red-500" />
+                <h2 className="font-bold text-zinc-900 dark:text-zinc-100 text-base">Delete Project</h2>
+              </div>
               <button
                 onClick={() => setProjectToDelete(null)}
                 className="p-1.5 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors cursor-pointer"
@@ -270,26 +472,27 @@ export default function Sidebar({
               </button>
             </div>
             
-            <p className="text-sm text-zinc-600 dark:text-zinc-400">
-              Are you sure you want to delete this project, including all its columns and tasks? This action cannot be undone.
+            <p className="text-sm text-zinc-500 dark:text-zinc-400 font-medium leading-relaxed">
+              Are you sure you want to delete this project, including all its columns and tasks? This action <span className="text-zinc-900 dark:text-zinc-100 font-bold">cannot be undone</span>.
             </p>
 
-            <div className="flex items-center justify-end gap-2 pt-1">
+            <div className="flex items-center justify-end gap-2 pt-2">
               <button
                 onClick={() => setProjectToDelete(null)}
-                className="px-4 py-2 text-xs text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors font-medium cursor-pointer rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-900"
+                className="px-4 py-2 text-xs text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors font-bold cursor-pointer rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-900"
               >
                 Cancel
               </button>
               <button
                 onClick={() => {
-                  onDeleteProject(projectToDelete);
+                  const p = projects.find(proj => proj.id === projectToDelete);
+                  if (p) handleDelete(p.id, p.title);
                   setProjectToDelete(null);
                 }}
-                className="flex items-center gap-1.5 px-4 py-2 text-xs bg-red-500 text-white font-medium rounded-lg hover:bg-red-500/90 transition-colors cursor-pointer"
+                className="flex items-center gap-1.5 px-5 py-2 text-xs bg-red-500 text-white font-bold rounded-lg hover:bg-red-600 transition-colors cursor-pointer"
               >
                 <Trash2 className="w-3.5 h-3.5" />
-                Delete
+                Delete Project
               </button>
             </div>
           </div>

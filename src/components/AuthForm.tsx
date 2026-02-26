@@ -4,20 +4,20 @@ import { useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
+import { useToast } from "./ui/Toast";
 
 export default function AuthForm() {
+  const { showToast } = useToast();
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setError(null);
 
     try {
       if (isLogin) {
@@ -36,11 +36,19 @@ export default function AuthForm() {
           },
         });
         if (error) throw error;
-        // Optionally show a message to verify email, or just auto-login if email verification is off
+        showToast({
+          type: "success",
+          title: "Account Created",
+          message: "Welcome! Please verify your email if required.",
+        });
         router.push("/");
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred during authentication.");
+      showToast({
+        type: "error",
+        title: isLogin ? "Login Failed" : "Sign Up Failed",
+        message: err instanceof Error ? err.message : "An error occurred during authentication.",
+      });
     } finally {
       setLoading(false);
     }
@@ -104,12 +112,6 @@ export default function AuthForm() {
           />
         </div>
 
-        {error && (
-          <div className="text-sm text-red-500 bg-red-50 dark:bg-red-500/10 p-3 rounded-xl border border-red-100 dark:border-red-500/20">
-            {error}
-          </div>
-        )}
-
         <button
           type="submit"
           disabled={loading}
@@ -124,7 +126,6 @@ export default function AuthForm() {
           type="button"
           onClick={() => {
             setIsLogin(!isLogin);
-            setError(null);
           }}
           className="text-sm text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"
         >
