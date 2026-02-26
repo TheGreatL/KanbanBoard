@@ -14,6 +14,7 @@ export interface ColumnType {
   title: string;
   color: string;
   position: number;
+  created_at: string;
   archived_at?: string | null;
   is_archive_pool?: boolean;
 }

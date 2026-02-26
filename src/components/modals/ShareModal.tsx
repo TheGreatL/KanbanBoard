@@ -20,7 +20,10 @@ export default function ShareModal({ isOpen, onClose, projectId, currentUserId }
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [projectMembers, setProjectMembers] = useState<any[]>([]);
-  const [invitingRole, setInvitingRole] = useState("editor");
+  const [invitingRole, setInvitingRole] = useState("viewer");
+
+  const currentUserRole = projectMembers.find(m => m.user_id === currentUserId)?.role;
+  const isOwner = currentUserRole === 'owner';
 
   const fetchProjectMembers = async () => {
     const { data } = await supabase
@@ -116,6 +119,20 @@ export default function ShareModal({ isOpen, onClose, projectId, currentUserId }
               placeholder="Invite by username..."
             />
           </div>
+
+          {isOwner && (
+            <div className="flex items-center gap-2 px-1">
+              <span className="text-xs font-semibold text-zinc-500 uppercase">Role:</span>
+              <select 
+                value={invitingRole}
+                onChange={(e) => setInvitingRole(e.target.value)}
+                className="text-xs bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2 py-1 outline-none focus:ring-1 focus:ring-zinc-400"
+              >
+                <option value="viewer">Viewer (Read-only)</option>
+                <option value="editor">Editor (Can edit tasks)</option>
+              </select>
+            </div>
+          )}
 
           {/* Search Results */}
           {searchResults.length > 0 && (
