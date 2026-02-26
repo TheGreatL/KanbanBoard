@@ -3,6 +3,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { Trash2, Pencil, X, Check, Calendar, GripVertical, RotateCcw } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
+import { Tooltip } from "./ui/Tooltip";
 
 export interface Task {
   id: string;
@@ -113,14 +114,15 @@ export default function TaskCard({ task, deleteTask, updateTask, restoreTask, is
         tabIndex={undefined}
       >
         {/* Drag handle — left strip */}
-        <div
-          {...attributes}
-          {...listeners}
-          className="flex items-center justify-center px-1.5 text-zinc-300 dark:text-zinc-700 hover:text-zinc-500 dark:hover:text-zinc-400 cursor-grab active:cursor-grabbing rounded-l-xl hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors shrink-0"
-          title="Drag to move"
-        >
-          <GripVertical className="w-3.5 h-3.5" />
-        </div>
+        <Tooltip text="Drag to move" position="right">
+          <div
+            {...attributes}
+            {...listeners}
+            className="flex items-center justify-center px-1.5 text-zinc-300 dark:text-zinc-700 hover:text-zinc-500 dark:hover:text-zinc-400 cursor-grab active:cursor-grabbing rounded-l-xl hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors shrink-0"
+          >
+            <GripVertical className="w-3.5 h-3.5" />
+          </div>
+        </Tooltip>
 
         {/* Card content */}
         <div className="flex flex-col gap-1.5 p-3 flex-1 min-w-0">
@@ -148,53 +150,56 @@ export default function TaskCard({ task, deleteTask, updateTask, restoreTask, is
 
             <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
               {restoreTask && (
+                  <Tooltip text="Restore task">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        // We need a way to let the user pick a target column, 
+                        // but for now we'll just use a simple restoration to the first active column 
+                        // or let the parent handle the target selection if we had a more complex UI.
+                        // For the sake of this implementation, we'll assume the parent knows where to put it
+                        // or we'll prompt for column selection in a real app.
+                        // Simplified: We'll just call it and let the board handle it.
+                        // Actually, we'll just pass a dummy/default and let KanbanBoard handle the logic.
+                        // I will update the restoreTask signature in KanbanBoard to be more flexible.
+                        restoreTask(task.id, ""); 
+                      }}
+                      onPointerDown={(e) => e.stopPropagation()}
+                      onMouseDown={(e) => e.preventDefault()}
+                      className="p-1 text-zinc-400 hover:text-emerald-500 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+                    >
+                      <RotateCcw className="w-3 h-3" />
+                    </button>
+                  </Tooltip>
+              )}
+              <Tooltip text="Edit task">
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    // We need a way to let the user pick a target column, 
-                    // but for now we'll just use a simple restoration to the first active column 
-                    // or let the parent handle the target selection if we had a more complex UI.
-                    // For the sake of this implementation, we'll assume the parent knows where to put it
-                    // or we'll prompt for column selection in a real app.
-                    // Simplified: We'll just call it and let the board handle it.
-                    // Actually, we'll just pass a dummy/default and let KanbanBoard handle the logic.
-                    // I will update the restoreTask signature in KanbanBoard to be more flexible.
-                    restoreTask(task.id, ""); 
+                    setEditTitle(task.title ?? "");
+                    setEditContent(task.content ?? "");
+                    setIsEditing(true);
                   }}
                   onPointerDown={(e) => e.stopPropagation()}
                   onMouseDown={(e) => e.preventDefault()}
-                  className="p-1 text-zinc-400 hover:text-emerald-500 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
-                  title="Restore task"
+                  className="p-1 text-zinc-400 hover:text-blue-500 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
                 >
-                  <RotateCcw className="w-3 h-3" />
+                  <Pencil className="w-3 h-3" />
                 </button>
-              )}
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setEditTitle(task.title ?? "");
-                  setEditContent(task.content ?? "");
-                  setIsEditing(true);
-                }}
-                onPointerDown={(e) => e.stopPropagation()}
-                onMouseDown={(e) => e.preventDefault()}
-                className="p-1 text-zinc-400 hover:text-blue-500 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
-                title="Edit task"
-              >
-                <Pencil className="w-3 h-3" />
-              </button>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setIsDeleteDialogOpen(true);
-                }}
-                onPointerDown={(e) => e.stopPropagation()}
-                onMouseDown={(e) => e.preventDefault()}
-                className="p-1 text-zinc-400 hover:text-red-500 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
-                title={restoreTask ? "Delete permanently" : "Delete task"}
-              >
-                <Trash2 className="w-3 h-3" />
-              </button>
+              </Tooltip>
+              <Tooltip text={restoreTask ? "Delete permanently" : "Delete task"}>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsDeleteDialogOpen(true);
+                  }}
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onMouseDown={(e) => e.preventDefault()}
+                  className="p-1 text-zinc-400 hover:text-red-500 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+                >
+                  <Trash2 className="w-3 h-3" />
+                </button>
+              </Tooltip>
             </div>
           </div>
         </div>

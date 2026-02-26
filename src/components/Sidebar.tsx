@@ -1,6 +1,7 @@
 import { Plus, FolderKanban, LogOut, Loader2, Trash2, Pencil, X, Archive, RotateCcw, ChevronRight, Users } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import { Tooltip } from "./ui/Tooltip";
 
 export interface Project {
   id: string;
@@ -116,52 +117,56 @@ export default function Sidebar({
 
         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all ml-2">
           {editingId !== p.id && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setEditingId(p.id);
-                setEditTitle(p.title);
-              }}
-              className="text-zinc-400 hover:text-blue-500 transition-colors p-1 rounded-md hover:bg-zinc-200 dark:hover:bg-zinc-800 cursor-pointer"
-              title="Edit Project"
-            >
-              <Pencil className="w-3.5 h-3.5" />
-            </button>
+            <Tooltip text="Edit Project">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setEditingId(p.id);
+                  setEditTitle(p.title);
+                }}
+                className="text-zinc-400 hover:text-blue-500 transition-colors p-1 rounded-md hover:bg-zinc-200 dark:hover:bg-zinc-800 cursor-pointer"
+              >
+                <Pencil className="w-3.5 h-3.5" />
+              </button>
+            </Tooltip>
           )}
           {isArchived ? (
             <>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onRestoreProject(p.id);
-                }}
-                className="text-zinc-400 hover:text-emerald-500 transition-colors p-1 rounded-md hover:bg-zinc-200 dark:hover:bg-zinc-800 cursor-pointer"
-                title="Restore Project"
-              >
-                <RotateCcw className="w-3.5 h-3.5" />
-              </button>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setProjectToDelete(p.id);
-                }}
-                className="text-zinc-400 hover:text-rose-500 transition-colors p-1 rounded-md hover:bg-zinc-200 dark:hover:bg-zinc-800 cursor-pointer"
-                title="Delete Project Permanently"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
+              <Tooltip text="Restore Project">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onRestoreProject(p.id);
+                  }}
+                  className="text-zinc-400 hover:text-emerald-500 transition-colors p-1 rounded-md hover:bg-zinc-200 dark:hover:bg-zinc-800 cursor-pointer"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                </button>
+              </Tooltip>
+              <Tooltip text="Delete Project Permanently">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setProjectToDelete(p.id);
+                  }}
+                  className="text-zinc-400 hover:text-rose-500 transition-colors p-1 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </Tooltip>
             </>
           ) : (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onArchiveProject(p.id);
-              }}
-              className="text-zinc-400 hover:text-amber-500 transition-colors p-1 rounded-md hover:bg-zinc-200 dark:hover:bg-zinc-800 cursor-pointer"
-              title="Archive Project"
-            >
-              <Archive className="w-3.5 h-3.5" />
-            </button>
+            <Tooltip text="Archive Project">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onArchiveProject(p.id);
+                }}
+                className="text-zinc-400 hover:text-amber-500 transition-colors p-1 rounded-md hover:bg-zinc-200 dark:hover:bg-zinc-800 cursor-pointer"
+              >
+                <Archive className="w-3.5 h-3.5" />
+              </button>
+            </Tooltip>
           )}
         </div>
       </div>

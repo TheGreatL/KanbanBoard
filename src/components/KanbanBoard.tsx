@@ -18,6 +18,7 @@ import Column, { ColumnType } from "./Column";
 import TaskCard, { Task } from "./TaskCard";
 import { supabase } from "@/lib/supabase";
 import { Plus, Loader2, ZoomIn, ZoomOut, LayoutList, AlignLeft, X, Check, Columns, Maximize, Users, Share2, Search, UserPlus, UserMinus } from "lucide-react";
+import { Tooltip } from "./ui/Tooltip";
 interface KanbanBoardProps {
   projectId: string;
 }
@@ -33,35 +34,39 @@ function ZoomControls() {
 
   return (
     <div className="absolute bottom-6 right-6 flex items-center gap-2 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl p-1.5 shadow-sm select-none z-50 no-pan">
-      <button
-        onClick={() => zoomOut(0.2)}
-        className="p-2 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-900 rounded-lg transition-colors"
-        title="Zoom Out"
-      >
-        <ZoomOut className="w-5 h-5" />
-      </button>
-      <button
-        onClick={() => zoomIn(0.2)}
-        className="p-2 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-900 rounded-lg transition-colors"
-        title="Zoom In"
-      >
-        <ZoomIn className="w-5 h-5" />
-      </button>
+      <Tooltip text="Zoom Out">
+        <button
+          onClick={() => zoomOut(0.2)}
+          className="p-2 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-900 rounded-lg transition-colors"
+        >
+          <ZoomOut className="w-5 h-5" />
+        </button>
+      </Tooltip>
+      <Tooltip text="Zoom In">
+        <button
+          onClick={() => zoomIn(0.2)}
+          className="p-2 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-900 rounded-lg transition-colors"
+        >
+          <ZoomIn className="w-5 h-5" />
+        </button>
+      </Tooltip>
       <div className="w-px h-6 bg-zinc-200 dark:bg-zinc-800 mx-1" />
-      <button
-        onClick={() => resetTransform()}
-        className="p-2 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-900 rounded-lg transition-colors cursor-pointer"
-        title="Reset Camera"
-      >
-        <Maximize className="w-5 h-5" />
-      </button>
+      <Tooltip text="Reset Camera">
+        <button
+          onClick={() => resetTransform()}
+          className="p-2 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-900 rounded-lg transition-colors cursor-pointer"
+        >
+          <Maximize className="w-5 h-5" />
+        </button>
+      </Tooltip>
       <div className="w-px h-6 bg-zinc-200 dark:bg-zinc-800 mx-0.5" />
-      <div
-        className="px-3 py-2 text-zinc-500 flex items-center justify-center min-w-[60px]"
-        title="Current Zoom"
-      >
-        <span className="text-xs font-semibold tabular-nums text-zinc-400 dark:text-zinc-600">{displayScale}%</span>
-      </div>
+      <Tooltip text="Current Zoom">
+        <div
+          className="px-3 py-2 text-zinc-500 flex items-center justify-center min-w-[60px]"
+        >
+          <span className="text-xs font-semibold tabular-nums text-zinc-400 dark:text-zinc-600">{displayScale}%</span>
+        </div>
+      </Tooltip>
     </div>
   );
 }
@@ -809,13 +814,13 @@ export default function KanbanBoard({ projectId }: KanbanBoardProps) {
           <div className="h-4 w-px bg-zinc-200 dark:bg-zinc-800" />
           <div className="flex -space-x-2 overflow-hidden">
             {collaborators.map((collab, idx) => (
-              <div
-                key={idx}
-                className="inline-block h-6 w-6 rounded-full ring-2 ring-white dark:ring-zinc-950 bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-[10px] font-bold text-zinc-600 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700"
-                title={collab.username}
-              >
-                {collab.username?.charAt(0).toUpperCase()}
-              </div>
+              <Tooltip key={idx} text={collab.username || "Collaborator"}>
+                <div
+                  className="inline-block h-6 w-6 rounded-full ring-2 ring-white dark:ring-zinc-950 bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-[10px] font-bold text-zinc-600 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700"
+                >
+                  {collab.username?.charAt(0).toUpperCase()}
+                </div>
+              </Tooltip>
             ))}
             {collaborators.length === 0 && (
               <div className="flex items-center gap-1.5 text-xs text-zinc-400">
@@ -1105,14 +1110,14 @@ export default function KanbanBoard({ projectId }: KanbanBoardProps) {
                 </label>
                 <div className="grid grid-cols-6 gap-2 pt-1">
                   {AVAILABLE_COLORS.map((color) => (
-                    <button
-                      key={color}
-                      onClick={() => setNewColumnColor(color)}
-                      className={`w-full aspect-square rounded-full ${DOT_COLOR_MAP[color]} hover:scale-110 transition-transform flex items-center justify-center cursor-pointer ${newColumnColor === color ? 'ring-2 ring-offset-2 ring-zinc-400 dark:ring-zinc-600 dark:ring-offset-zinc-950 shadow-sm' : ''}`}
-                      title={color}
-                    >
-                      {newColumnColor === color && <Check className="w-3 h-3 text-white" />}
-                    </button>
+                      <Tooltip key={color} text={color}>
+                        <button
+                          onClick={() => setNewColumnColor(color)}
+                          className={`w-full aspect-square rounded-full ${DOT_COLOR_MAP[color]} hover:scale-110 transition-transform flex items-center justify-center cursor-pointer ${newColumnColor === color ? 'ring-2 ring-offset-2 ring-zinc-400 dark:ring-zinc-600 dark:ring-offset-zinc-950 shadow-sm' : ''}`}
+                        >
+                          {newColumnColor === color && <Check className="w-3 h-3 text-white" />}
+                        </button>
+                      </Tooltip>
                   ))}
                 </div>
               </div>
@@ -1236,13 +1241,14 @@ export default function KanbanBoard({ projectId }: KanbanBoardProps) {
                       </div>
                     </div>
                     {member.user_id !== currentUserId && member.role !== 'owner' && (
-                      <button
-                        onClick={() => removeProjectMember(member.id)}
-                        className="p-1.5 text-zinc-400 hover:text-red-500 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors cursor-pointer"
-                        title="Remove member"
-                      >
-                        <UserMinus className="w-3.5 h-3.5" />
-                      </button>
+                      <Tooltip text="Remove member">
+                        <button
+                          onClick={() => removeProjectMember(member.id)}
+                          className="p-1.5 text-zinc-400 hover:text-red-500 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors cursor-pointer"
+                        >
+                          <UserMinus className="w-3.5 h-3.5" />
+                        </button>
+                      </Tooltip>
                     )}
                   </div>
                 ))}
