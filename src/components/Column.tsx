@@ -177,8 +177,14 @@ export default function Column({
       <div
         ref={setNodeRef}
         style={style}
-        className={`${bgColorClass} w-80 shrink-0 flex flex-col rounded-2xl border border-zinc-200 dark:border-zinc-800 border-t-4 ${borderColorClass} transition-colors duration-300 h-max ${column.is_archive_pool ? 'opacity-90 grayscale-[0.2]' : ''}`}
+        className={cn(
+          "w-80 shrink-0 flex flex-col rounded-3xl border border-zinc-200/50 dark:border-zinc-800/50 transition-all duration-300 h-max overflow-hidden shadow-sm hover:shadow-xl hover:shadow-zinc-200/20 dark:hover:shadow-black/40",
+          bgColorClass,
+          column.is_archive_pool && "opacity-90 grayscale-[0.2]",
+          isDragging && "scale-[1.02] rotate-1 z-50 shadow-2xl"
+        )}
       >
+        <div className={cn("h-1.5 w-full", DOT_COLOR_MAP[column.color] || "bg-zinc-400")} />
         {/* Column Header */}
         <div className="no-pan p-4 flex items-center gap-2 border-b border-zinc-200/50 dark:border-zinc-800/50 relative group/header">
           {/* Drag handle */}
@@ -207,7 +213,7 @@ export default function Column({
                 onClick={(e) => e.stopPropagation()}
                 className="p-1 -ml-1 hover:bg-zinc-200 dark:hover:bg-zinc-800 rounded-md transition-colors cursor-pointer flex items-center justify-center opacity-80 hover:opacity-100 outline-none"
               >
-                <div className={`w-2.5 h-2.5 rounded-full ${dotColorClass}`} />
+                <div className={cn("w-3 h-3 rounded-full shadow-sm", dotColorClass)} />
               </button>
             </Tooltip>
 
@@ -276,8 +282,11 @@ export default function Column({
             )}
           </div>
 
-          <span className={`shrink-0 text-xs px-2 py-0.5 rounded-full font-medium transition-colors duration-300 ${badgeColorClass}`}>
-            {tasks.length}
+          <span className={cn(
+            "shrink-0 text-[10px] px-2 py-0.5 rounded-lg font-bold transition-all duration-300 shadow-sm uppercase tracking-tighter",
+            badgeColorClass
+          )}>
+            {tasks.length} {tasks.length === 1 ? 'Task' : 'Tasks'}
           </span>
 
           {!column.is_archive_pool && (
@@ -289,7 +298,7 @@ export default function Column({
                   }}
                   onPointerDown={(e) => e.stopPropagation()}
                   onMouseDown={(e) => e.preventDefault()}
-                  className="shrink-0 opacity-0 group-hover/header:opacity-100 text-zinc-400 hover:text-red-500 transition-opacity p-1 rounded-md hover:bg-zinc-200 dark:hover:bg-zinc-800 cursor-pointer"
+                  className="shrink-0 lg:invisible lg:opacity-0 lg:group-hover/header:visible lg:group-hover/header:opacity-100 text-zinc-400 hover:text-red-500 transition-all p-1 rounded-md hover:bg-zinc-200 dark:hover:bg-zinc-800 cursor-pointer"
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
@@ -343,10 +352,10 @@ export default function Column({
               onMouseDown={(e) => e.preventDefault()}
               className="flex items-center gap-2 w-full p-2 text-sm text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-200/50 dark:hover:bg-zinc-800/50 rounded-xl transition-colors cursor-pointer group/add"
             >
-              <div className="w-5 h-5 rounded-md bg-zinc-200/70 dark:bg-zinc-800/70 flex items-center justify-center group-hover/add:bg-zinc-300/70 dark:group-hover/add:bg-zinc-700/70 transition-colors">
-                <Plus className="w-3 h-3" />
+              <div className="w-6 h-6 rounded-lg bg-white dark:bg-zinc-800 shadow-sm flex items-center justify-center group-hover/add:scale-110 transition-transform">
+                <Plus className="w-3.5 h-3.5" />
               </div>
-              <span className="font-medium">Add task</span>
+              <span className="font-bold tracking-tight">Add task</span>
             </button>
           )}
         </div>

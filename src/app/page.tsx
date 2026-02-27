@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { Loader2, LayoutDashboard } from "lucide-react";
 import Sidebar, { Project } from "@/components/Sidebar";
+import { cn } from "@/lib/utils";
 import dynamic from "next/dynamic";
 
 const KanbanBoard = dynamic(() => import("@/components/KanbanBoard"), { ssr: false });
@@ -151,6 +152,10 @@ export default function Home() {
     await supabase.auth.signOut();
   };
 
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white dark:bg-zinc-950">
@@ -160,24 +165,50 @@ export default function Home() {
   }
 
   return (
-    <div className="flex h-screen bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-50 overflow-hidden">
-      <Sidebar
-        projects={projects}
-        activeProjectId={activeProjectId}
-        isLoading={loadingProjects}
-        onSelectProject={setActiveProjectId}
-        onCreateProject={createProject}
-        onArchiveProject={archiveProject}
-        onRestoreProject={restoreProject}
-        onDeleteProject={deleteProjectPermanently}
-        onUpdateProject={updateProject}
-        onLogout={handleLogout}
-        currentUserId={currentUserId}
-      />
+    <div className="flex h-screen bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-50 overflow-hidden relative">
+      {/* Mobile Toggle Button */}
+      <button
+        onClick={toggleSidebar}
+        className="lg:hidden fixed bottom-6 left-6 z-[80] w-12 h-12 glass rounded-2xl flex items-center justify-center shadow-lg active:scale-95 transition-all text-zinc-600 dark:text-zinc-400"
+        aria-label="Toggle Sidebar"
+      >
+        <LayoutDashboard className="w-6 h-6" />
+      </button>
+
+      {/* Overlay for mobile sidebar */}
+      {isSidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black/20 backdrop-blur-[2px] z-[70] lg:hidden animate-in fade-in duration-200"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
+
+      <div className={cn(
+        "fixed inset-y-0 left-0 z-[75] lg:relative lg:block transform transition-transform duration-300 ease-out lg:translate-x-0",
+        isSidebarOpen ? "translate-x-0" : "-translate-x-full"
+      )}>
+        <Sidebar
+          projects={projects}
+          activeProjectId={activeProjectId}
+          isLoading={loadingProjects}
+          onSelectProject={(id) => {
+            setActiveProjectId(id);
+            setIsSidebarOpen(false);
+          }}
+          onCreateProject={createProject}
+          onArchiveProject={archiveProject}
+          onRestoreProject={restoreProject}
+          onDeleteProject={deleteProjectPermanently}
+          onUpdateProject={updateProject}
+          onLogout={handleLogout}
+          currentUserId={currentUserId}
+          onClose={() => setIsSidebarOpen(false)}
+        />
+      </div>
       
       <main className="flex-1 overflow-hidden flex flex-col bg-white dark:bg-zinc-950 min-w-0 min-h-0">
         {activeProjectId ? (
-          <div className="flex-1 p-8 min-w-0 min-h-0 relative overflow-hidden">
+          <div className="flex-1 p-4 lg:p-8 min-w-0 min-h-0 relative overflow-hidden">
             <KanbanBoard projectId={activeProjectId} />
           </div>
         ) : (
@@ -191,7 +222,6 @@ export default function Home() {
             <p className="text-zinc-500 dark:text-zinc-400 mb-8 text-sm">
               Create a new project to start organizing your tasks and ideas with your new minimalist Kanban board.
             </p>
-            {/* The sidebar has a create project button anyway, but we can add an action here too or just point to sidebar */}
             <p className="text-xs font-semibold text-zinc-400 uppercase tracking-widest">
               ← Use the sidebar to create your first project
             </p>

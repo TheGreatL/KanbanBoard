@@ -38,11 +38,11 @@ function ZoomControls() {
   });
 
   return (
-    <div className="absolute bottom-6 right-6 flex items-center gap-2 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl p-1.5 shadow-sm select-none z-50 no-pan">
+    <div className="absolute top-auto bottom-6 right-6 flex items-center gap-1 glass rounded-2xl p-1.5 shadow-xl z-50 no-pan animate-in slide-in-from-bottom-4 duration-500">
       <Tooltip text="Zoom Out">
         <button
           onClick={() => zoomOut(0.2)}
-          className="p-2 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-900 rounded-lg transition-colors"
+          className="p-2 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-xl transition-all active:scale-95"
         >
           <ZoomOut className="w-5 h-5" />
         </button>
@@ -50,28 +50,26 @@ function ZoomControls() {
       <Tooltip text="Zoom In">
         <button
           onClick={() => zoomIn(0.2)}
-          className="p-2 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-900 rounded-lg transition-colors"
+          className="p-2 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-xl transition-all active:scale-95"
         >
           <ZoomIn className="w-5 h-5" />
         </button>
       </Tooltip>
-      <div className="w-px h-6 bg-zinc-200 dark:bg-zinc-800 mx-1" />
+      <div className="w-px h-6 bg-zinc-200/50 dark:bg-zinc-800/50 mx-1" />
       <Tooltip text="Reset Camera">
         <button
           onClick={() => resetTransform()}
-          className="p-2 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-900 rounded-lg transition-colors cursor-pointer"
+          className="p-2 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-xl transition-all active:scale-95"
         >
           <Maximize className="w-5 h-5" />
         </button>
       </Tooltip>
-      <div className="w-px h-6 bg-zinc-200 dark:bg-zinc-800 mx-0.5" />
-      <Tooltip text="Current Zoom">
-        <div
-          className="px-3 py-2 text-zinc-500 flex items-center justify-center min-w-[60px]"
-        >
-          <span className="text-xs font-semibold tabular-nums text-zinc-400 dark:text-zinc-600">{displayScale}%</span>
+      <div className="hidden lg:flex items-center">
+        <div className="w-px h-6 bg-zinc-200/50 dark:bg-zinc-800/50 mx-1" />
+        <div className="px-3 py-2 text-zinc-500 flex items-center justify-center min-w-[60px]">
+          <span className="text-xs font-bold tabular-nums text-zinc-400 dark:text-zinc-500">{displayScale}%</span>
         </div>
-      </Tooltip>
+      </div>
     </div>
   );
 }
@@ -865,27 +863,31 @@ export default function KanbanBoard({ projectId }: KanbanBoardProps) {
         }}
       >
         {/* Canvas Header Bar */}
-        <div className="flex items-center justify-between px-6 py-3 border-b border-zinc-200 dark:border-zinc-800 bg-white/80 dark:bg-zinc-950/80 backdrop-blur-md z-[60]">
-          <div className="flex items-center gap-4">
-            <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
-              <Columns className="w-4 h-4 text-zinc-500" />
-              {projectName || "Board Canvas"}
-            </h2>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between px-4 lg:px-6 py-4 sm:py-3 border-b border-zinc-200/50 dark:border-zinc-800/50 glass z-[60] gap-4 sm:gap-2">
+          <div className="flex items-center gap-3 lg:gap-4 overflow-hidden w-full sm:w-auto">
+            <div className="flex items-center gap-2 overflow-hidden">
+              <div className="w-8 h-8 rounded-lg bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center shrink-0">
+                <Columns className="w-4 h-4 text-zinc-500" />
+              </div>
+              <h2 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 truncate tracking-tight">
+                {projectName || "Board Canvas"}
+              </h2>
+            </div>
+            <div className="hidden lg:block h-4 w-px bg-zinc-200 dark:bg-zinc-800" />
+            <span className="hidden lg:block text-[10px] text-zinc-500 font-bold uppercase tracking-wider">{columns.length} Columns • {tasks.length} Tasks</span>
             <div className="h-4 w-px bg-zinc-200 dark:bg-zinc-800" />
-            <span className="text-xs text-zinc-500 font-medium">{columns.length} Columns • {tasks.length} Tasks</span>
-            <div className="h-4 w-px bg-zinc-200 dark:bg-zinc-800" />
-            <div className="flex -space-x-2 overflow-hidden">
+            <div className="flex -space-x-2 overflow-hidden shrink-0">
               {collaborators.map((collab, idx) => (
                 <Tooltip key={idx} text={collab.username || "Collaborator"}>
                   <div
-                    className="inline-block h-6 w-6 rounded-full ring-2 ring-white dark:ring-zinc-950 bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-[10px] font-bold text-zinc-600 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700"
+                    className="inline-block h-6 w-6 rounded-full ring-2 ring-white dark:ring-zinc-950 bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-[10px] font-bold text-zinc-600 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700 shadow-sm"
                   >
                     {collab.username?.charAt(0).toUpperCase()}
                   </div>
                 </Tooltip>
               ))}
               {collaborators.length === 0 && (
-                <div className="flex items-center gap-1.5 text-xs text-zinc-400">
+                <div className="flex items-center gap-1.5 text-[10px] text-zinc-400 font-bold uppercase tracking-wider">
                   <Users className="w-3 h-3" />
                   <span>Just you</span>
                 </div>
@@ -893,28 +895,26 @@ export default function KanbanBoard({ projectId }: KanbanBoardProps) {
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
             <button
               onClick={() => openAddTaskModal()}
               disabled={columns.length === 0}
-              className="flex items-center gap-2 px-3 py-1.5 text-xs font-semibold bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 rounded-lg hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+              className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 text-xs font-bold bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 rounded-xl hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-all shadow-lg shadow-zinc-950/20 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
             >
               <Plus className="w-3.5 h-3.5" />
-              Add Task
+              Task
             </button>
             <button
               onClick={openAddColumnModal}
-              className="flex items-center gap-2 px-3 py-1.5 text-xs font-semibold bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 border border-zinc-200 dark:border-zinc-800 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-all shadow-sm cursor-pointer"
+              className="p-2 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 glass rounded-xl transition-all shadow-sm active:scale-95 cursor-pointer"
             >
-              <Plus className="w-3.5 h-3.5" />
-              Add Column
+              <Plus className="w-5 h-5" />
             </button>
             <button
               onClick={openShareModal}
-              className="flex items-center gap-2 px-3 py-1.5 text-xs font-semibold bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 border border-zinc-200 dark:border-zinc-800 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-all shadow-sm cursor-pointer"
+              className="p-2 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 glass rounded-xl transition-all shadow-sm active:scale-95 cursor-pointer"
             >
-              <Share2 className="w-3.5 h-3.5" />
-              Share
+              <Share2 className="w-5 h-5" />
             </button>
           </div>
         </div>

@@ -129,7 +129,7 @@ export default function TaskCard({ task, columnColor = "zinc", deleteTask, updat
       <div
         ref={setNodeRef}
         style={style}
-        className="no-pan group bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 hover:shadow-md transition-all text-sm text-zinc-800 dark:text-zinc-200 flex items-stretch cursor-default relative overflow-hidden active:scale-[0.98]"
+        className="no-pan group bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/50 dark:border-zinc-800/50 hover:border-blue-500/30 dark:hover:border-blue-500/30 hover:shadow-xl hover:shadow-zinc-200/30 dark:hover:shadow-black/50 transition-all text-sm text-zinc-800 dark:text-zinc-200 flex items-stretch cursor-default relative overflow-hidden active:scale-[0.99]"
         tabIndex={undefined}
       >
         {/* Semantic Left Strip */}
@@ -149,12 +149,12 @@ export default function TaskCard({ task, columnColor = "zinc", deleteTask, updat
         {/* Card content */}
         <div className="flex flex-col gap-1.5 p-3 pl-1 flex-1 min-w-0">
           {task.title && (
-            <p className="font-bold text-zinc-900 dark:text-zinc-100 text-sm leading-snug break-words">
+            <p className="font-bold text-zinc-900 dark:text-zinc-100 text-sm leading-snug break-words tracking-tight">
               {task.title}
             </p>
           )}
           {task.content && (
-            <p className="whitespace-pre-wrap text-zinc-500 dark:text-zinc-400 text-xs leading-relaxed break-words font-medium">
+            <p className="whitespace-pre-wrap text-zinc-500 dark:text-zinc-400 text-xs leading-relaxed break-words font-medium opacity-80 group-hover:opacity-100 transition-opacity">
               {task.content}
             </p>
           )}
@@ -170,7 +170,7 @@ export default function TaskCard({ task, columnColor = "zinc", deleteTask, updat
               <span />
             )}
 
-            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity translate-x-1 group-hover:translate-x-0">
+            <div className="flex items-center gap-1 lg:invisible lg:opacity-0 lg:group-hover:visible lg:group-hover:opacity-100 transition-all translate-x-0 lg:translate-x-1 lg:group-hover:translate-x-0">
               {restoreTask && (
                   <Tooltip text="Restore task">
                     <button
@@ -180,7 +180,7 @@ export default function TaskCard({ task, columnColor = "zinc", deleteTask, updat
                       }}
                       onPointerDown={(e) => e.stopPropagation()}
                       onMouseDown={(e) => e.preventDefault()}
-                      className="p-1 px-1.5 text-zinc-400 hover:text-emerald-500 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+                      className="p-1.5 px-2 text-zinc-400 hover:text-emerald-500 rounded-xl hover:bg-emerald-50 dark:hover:bg-emerald-500/10 transition-colors cursor-pointer"
                     >
                       <RotateCcw className="w-3.5 h-3.5" />
                     </button>
@@ -209,7 +209,7 @@ export default function TaskCard({ task, columnColor = "zinc", deleteTask, updat
                   }}
                   onPointerDown={(e) => e.stopPropagation()}
                   onMouseDown={(e) => e.preventDefault()}
-                  className="p-1 px-1.5 text-zinc-400 hover:text-red-500 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+                  className="p-1.5 px-2 text-zinc-400 hover:text-red-500 rounded-xl hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors cursor-pointer"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
