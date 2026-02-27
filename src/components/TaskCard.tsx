@@ -1,9 +1,10 @@
+import { Tooltip } from "./ui/Tooltip";
+import { cn } from "@/lib/utils";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { Trash2, Pencil, X, Check, Calendar, GripVertical, RotateCcw } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { Tooltip } from "./ui/Tooltip";
 
 export interface Task {
   id: string;
@@ -24,6 +25,7 @@ interface TaskCardProps {
   updateTask?: (id: string, title: string, content: string) => Promise<void>;
   restoreTask?: (id: string, targetColumnId: string) => Promise<void>;
   isOverlay?: boolean;
+  isEditable?: boolean;
 }
 
 const STRIP_COLOR_MAP: Record<string, string> = {
@@ -46,11 +48,11 @@ function formatDate(dateStr?: string): string {
   return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 }
 
-export default function TaskCard({ task, columnColor = "zinc", deleteTask, updateTask, restoreTask, isOverlay }: TaskCardProps) {
+export default function TaskCard({ task, columnColor = "zinc", deleteTask, updateTask, restoreTask, isOverlay, isEditable = true }: TaskCardProps) {
   const { setNodeRef, attributes, listeners, transform, transition, isDragging } = useSortable({
     id: task.id,
     data: { type: "Task", task },
-    disabled: isOverlay,
+    disabled: isOverlay || !isEditable,
   });
 
   const style = {
@@ -71,8 +73,8 @@ export default function TaskCard({ task, columnColor = "zinc", deleteTask, updat
 
   // Sync edit fields if task changes externally
   useEffect(() => {
-    setEditTitle(prev => prev !== task.title ? (task.title ?? "") : prev);
-    setEditContent(prev => prev !== task.content ? (task.content ?? "") : prev);
+    setEditTitle((prev: string) => prev !== task.title ? (task.title ?? "") : prev);
+    setEditContent((prev: string) => prev !== task.content ? (task.content ?? "") : prev);
   }, [task.title, task.content]);
 
   // Auto-focus without triggering scroll-into-view
@@ -136,15 +138,17 @@ export default function TaskCard({ task, columnColor = "zinc", deleteTask, updat
         <div className={`w-1 shrink-0 ${accentColorClass} opacity-80 group-hover:opacity-100 transition-opacity`} />
 
         {/* Drag handle — overlays content slightly or sits on left */}
-        <Tooltip text="Drag to move" position="right">
-          <div
-            {...attributes}
-            {...listeners}
-            className="flex items-center justify-center px-1 text-zinc-300 dark:text-zinc-700 hover:text-zinc-500 dark:hover:text-zinc-400 cursor-grab active:cursor-grabbing hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors shrink-0"
-          >
-            <GripVertical className="w-3.5 h-3.5" />
-          </div>
-        </Tooltip>
+        {isEditable && (
+          <Tooltip text="Drag to move" position="right">
+            <div
+              {...attributes}
+              {...listeners}
+              className="flex items-center justify-center px-1 text-zinc-300 dark:text-zinc-700 hover:text-zinc-500 dark:hover:text-zinc-400 cursor-grab active:cursor-grabbing hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors shrink-0"
+            >
+              <GripVertical className="w-3.5 h-3.5" />
+            </div>
+          </Tooltip>
+        )}
 
         {/* Card content */}
         <div className="flex flex-col gap-1.5 p-3 pl-1 flex-1 min-w-0">
@@ -170,8 +174,11 @@ export default function TaskCard({ task, columnColor = "zinc", deleteTask, updat
               <span />
             )}
 
-            <div className="flex items-center gap-1 lg:invisible lg:opacity-0 lg:group-hover:visible lg:group-hover:opacity-100 transition-all translate-x-0 lg:translate-x-1 lg:group-hover:translate-x-0">
-              {restoreTask && (
+            <div className={cn(
+              "flex items-center gap-1",
+              isEditable ? "lg:invisible lg:opacity-0 lg:group-hover:visible lg:group-hover:opacity-100 transition-all translate-x-0 lg:translate-x-1 lg:group-hover:translate-x-0" : "hidden"
+            )}>
+              {restoreTask && isEditable && (
                   <Tooltip text="Restore task">
                     <button
                       onClick={(e) => {
@@ -186,34 +193,38 @@ export default function TaskCard({ task, columnColor = "zinc", deleteTask, updat
                     </button>
                   </Tooltip>
               )}
-              <Tooltip text="Edit task">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setEditTitle(task.title ?? "");
-                    setEditContent(task.content ?? "");
-                    setIsEditing(true);
-                  }}
-                  onPointerDown={(e) => e.stopPropagation()}
-                  onMouseDown={(e) => e.preventDefault()}
-                  className="p-1 px-1.5 text-zinc-400 hover:text-blue-500 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
-                >
-                  <Pencil className="w-3.5 h-3.5" />
-                </button>
-              </Tooltip>
-              <Tooltip text={isArchived ? "Delete permanently" : "Archive task"}>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setIsDeleteDialogOpen(true);
-                  }}
-                  onPointerDown={(e) => e.stopPropagation()}
-                  onMouseDown={(e) => e.preventDefault()}
-                  className="p-1.5 px-2 text-zinc-400 hover:text-red-500 rounded-xl hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors cursor-pointer"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
-              </Tooltip>
+              {isEditable && (
+                <>
+                  <Tooltip text="Edit task">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setEditTitle(task.title ?? "");
+                        setEditContent(task.content ?? "");
+                        setIsEditing(true);
+                      }}
+                      onPointerDown={(e) => e.stopPropagation()}
+                      onMouseDown={(e) => e.preventDefault()}
+                      className="p-1 px-1.5 text-zinc-400 hover:text-blue-500 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                    </button>
+                  </Tooltip>
+                  <Tooltip text={isArchived ? "Delete permanently" : "Archive task"}>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setIsDeleteDialogOpen(true);
+                      }}
+                      onPointerDown={(e) => e.stopPropagation()}
+                      onMouseDown={(e) => e.preventDefault()}
+                      className="p-1.5 px-2 text-zinc-400 hover:text-red-500 rounded-xl hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors cursor-pointer"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </Tooltip>
+                </>
+              )}
             </div>
           </div>
         </div>

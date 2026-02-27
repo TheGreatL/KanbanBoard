@@ -146,6 +146,17 @@ export default function ShareModal({ isOpen, onClose, projectId, currentUserId }
     }
   };
 
+  const updateProjectMemberRole = async (memberId: string, newRole: string) => {
+    const { error } = await supabase
+      .from("project_members")
+      .update({ role: newRole })
+      .eq("id", memberId);
+
+    if (!error) {
+      await fetchProjectMembers();
+    }
+  };
+
   if (!isOpen || typeof window === "undefined") return null;
 
   return createPortal(
@@ -253,7 +264,16 @@ export default function ShareModal({ isOpen, onClose, projectId, currentUserId }
                     <span className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
                       {member.profile?.username}
                     </span>
-                    <span className="text-[10px] text-zinc-500 capitalize">{member.role}</span>
+                    {member.user_id !== currentUserId &&
+                      member.role !== "owner" &&
+                      isOwner ? (
+                        <RoleDropdown
+                          value={member.role}
+                          onChange={(newRole) => updateProjectMemberRole(member.id, newRole)}
+                        />
+                      ) : (
+                        <span className="text-[10px] text-zinc-500 capitalize">{member.role}</span>
+                      )}
                   </div>
                 </div>
                 {member.user_id !== currentUserId &&
