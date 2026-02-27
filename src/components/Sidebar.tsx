@@ -7,6 +7,7 @@ import { useToast } from "./ui/Toast";
 import ProjectModal from "./modals/ProjectModal";
 import { createPortal } from "react-dom";
 import Link from "next/link";
+import { SidebarSkeleton } from "./ui/Skeleton";
 
 export interface Project {
   id: string;
@@ -318,9 +319,7 @@ export default function Sidebar({
 
 
         {isLoading ? (
-          <div className="flex items-center justify-center p-4">
-            <Loader2 className="w-5 h-5 animate-spin text-zinc-300 dark:text-zinc-700" />
-          </div>
+          <SidebarSkeleton />
         ) : (
           <div className="space-y-4">
             <ul className="space-y-1">

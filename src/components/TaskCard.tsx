@@ -71,8 +71,8 @@ export default function TaskCard({ task, columnColor = "zinc", deleteTask, updat
 
   // Sync edit fields if task changes externally
   useEffect(() => {
-    setEditTitle(task.title ?? "");
-    setEditContent(task.content ?? "");
+    setEditTitle(prev => prev !== task.title ? (task.title ?? "") : prev);
+    setEditContent(prev => prev !== task.content ? (task.content ?? "") : prev);
   }, [task.title, task.content]);
 
   // Auto-focus without triggering scroll-into-view

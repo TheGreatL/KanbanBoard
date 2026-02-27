@@ -24,6 +24,7 @@ import { Columns, Loader2, Maximize, Plus, Share2, Users, ZoomIn, ZoomOut } from
 import ShareModal from "./modals/ShareModal";
 import AddTaskModal from "./modals/AddTaskModal";
 import AddColumnModal from "./modals/AddColumnModal";
+import { BoardSkeleton } from "./ui/Skeleton";
 interface KanbanBoardProps {
   projectId: string;
 }
@@ -839,11 +840,7 @@ export default function KanbanBoard({ projectId }: KanbanBoardProps) {
   };
 
   if (isLoading) {
-    return (
-      <div className="flex-1 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-zinc-300 dark:text-zinc-700" />
-      </div>
-    );
+    return <BoardSkeleton />;
   }
 
   const openGlobalAddTask = (columnId?: string) => {

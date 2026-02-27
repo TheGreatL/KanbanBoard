@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-import { Loader2, LayoutDashboard } from "lucide-react";
+import { Loader2, LayoutDashboard, FolderKanban } from "lucide-react";
 import Sidebar, { Project } from "@/components/Sidebar";
 import { cn } from "@/lib/utils";
 import dynamic from "next/dynamic";
@@ -158,8 +158,20 @@ export default function Home() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-zinc-950">
-        <Loader2 className="w-8 h-8 animate-spin text-zinc-300 dark:text-zinc-700" />
+      <div className="min-h-screen flex flex-col items-center justify-center bg-white dark:bg-zinc-950 animate-in fade-in duration-700">
+        <div className="relative mb-8">
+          <div className="w-16 h-16 bg-blue-500 rounded-2xl flex items-center justify-center shadow-2xl shadow-blue-500/20 animate-bounce">
+            <FolderKanban className="w-8 h-8 text-white" />
+          </div>
+          <div className="absolute -inset-4 bg-blue-500/20 rounded-full blur-2xl animate-pulse -z-10" />
+        </div>
+        <div className="flex flex-col items-center gap-2">
+          <h2 className="text-xl font-bold text-zinc-900 dark:text-zinc-100 tracking-tight">Antigravity Kanban</h2>
+          <div className="flex items-center gap-2 text-zinc-400 dark:text-zinc-500 text-sm font-medium">
+            <Loader2 className="w-4 h-4 animate-spin" />
+            <span>Synchronizing your workspace...</span>
+          </div>
+        </div>
       </div>
     );
   }

@@ -5,9 +5,15 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { Loader2, ArrowLeft, Camera, Save, Check, LogOut } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
+import { ProfileSkeleton, Skeleton } from "@/components/ui/Skeleton";
 
 const DEFAULT_AVATAR =
   "https://oqhjxepxjzkfunemjvqp.supabase.co/storage/v1/object/public/avatars/user-default.png";
+
+interface UserProfile {
+  id: string;
+  email?: string;
+}
 
 export default function ProfilePage() {
   const { showToast } = useToast();
@@ -15,7 +21,7 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<UserProfile | null>(null);
   const [username, setUsername] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
   const [previewUrl, setPreviewUrl] = useState("");
@@ -51,6 +57,8 @@ export default function ProfilePage() {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!username.trim()) return;
+
+    if (!user) return;
 
     setIsSaving(true);
     try {
@@ -88,6 +96,7 @@ export default function ProfilePage() {
 
     try {
       setUploading(true);
+      if (!user) return;
       const fileExt = file.name.split(".").pop();
       const fileName = `${user.id}/${Math.random()}.${fileExt}`;
 
@@ -120,8 +129,12 @@ export default function ProfilePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-zinc-950">
-        <Loader2 className="w-8 h-8 animate-spin text-zinc-300 dark:text-zinc-700" />
+      <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 flex flex-col items-center p-4 lg:p-12">
+        <div className="w-full max-w-lg mb-8">
+          <Skeleton variant="text" width="30%" height={24} className="mb-2" />
+          <Skeleton variant="text" width="60%" height={16} />
+        </div>
+        <ProfileSkeleton />
       </div>
     );
   }
@@ -178,7 +191,7 @@ export default function ProfilePage() {
               <p className="font-bold text-zinc-900 dark:text-zinc-100 text-base truncate">
                 {username || "—"}
               </p>
-              <p className="text-xs text-zinc-400 truncate mt-0.5">{user.email}</p>
+              <p className="text-xs text-zinc-400 truncate mt-0.5">{user?.email}</p>
               <p className="text-[10px] text-zinc-400 mt-2 font-medium">
                 Click the camera to change your avatar
               </p>
@@ -217,7 +230,7 @@ export default function ProfilePage() {
                   Email
                 </span>
                 <span className="flex-1 text-sm text-zinc-400 dark:text-zinc-500 truncate select-all">
-                  {user.email}
+                  {user?.email}
                 </span>
               </div>
             </div>
