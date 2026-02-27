@@ -28,7 +28,7 @@ export default function ShareModal({ isOpen, onClose, projectId, currentUserId }
   const fetchProjectMembers = async () => {
     const { data } = await supabase
       .from("project_members")
-      .select("*, profile:profiles(username)")
+      .select("*, profile:profiles(username, avatar_url)")
       .eq("project_id", projectId);
     if (data) setProjectMembers(data);
   };
@@ -45,7 +45,7 @@ export default function ShareModal({ isOpen, onClose, projectId, currentUserId }
     setIsSearching(true);
     const { data } = await supabase
       .from("profiles")
-      .select("id, username")
+      .select("id, username, avatar_url")
       .ilike("username", `%${query}%`)
       .limit(5);
     setSearchResults(data || []);
@@ -140,8 +140,12 @@ export default function ShareModal({ isOpen, onClose, projectId, currentUserId }
               {searchResults.map((user) => (
                 <div key={user.id} className="flex items-center justify-between p-3">
                   <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-full bg-zinc-200 dark:bg-zinc-800 flex items-center justify-center text-xs font-bold">
-                      {user.username.charAt(0).toUpperCase()}
+                    <div className="w-8 h-8 rounded-full bg-zinc-200 dark:bg-zinc-800 overflow-hidden flex items-center justify-center text-xs font-bold shrink-0">
+                      {user.avatar_url ? (
+                        <img src={user.avatar_url} alt={user.username} className="w-full h-full object-cover" />
+                      ) : (
+                        user.username.charAt(0).toUpperCase()
+                      )}
                     </div>
                     <span className="text-sm font-medium text-zinc-900 dark:text-zinc-100">{user.username}</span>
                   </div>
@@ -171,8 +175,12 @@ export default function ShareModal({ isOpen, onClose, projectId, currentUserId }
             {projectMembers.map((member) => (
               <div key={member.id} className="flex items-center justify-between p-2 hover:bg-zinc-50 dark:hover:bg-zinc-900 rounded-xl transition-colors">
                 <div className="flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-[10px] font-bold">
-                    {member.profile?.username?.charAt(0).toUpperCase()}
+                  <div className="w-7 h-7 rounded-full bg-zinc-100 dark:bg-zinc-800 overflow-hidden flex items-center justify-center text-[10px] font-bold shrink-0">
+                    {member.profile?.avatar_url ? (
+                      <img src={member.profile.avatar_url} alt={member.profile.username} className="w-full h-full object-cover" />
+                    ) : (
+                      member.profile?.username?.charAt(0).toUpperCase()
+                    )}
                   </div>
                   <div className="flex flex-col">
                     <span className="text-sm font-medium text-zinc-900 dark:text-zinc-100">

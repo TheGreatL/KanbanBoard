@@ -327,9 +327,17 @@ export default function KanbanBoard({ projectId }: KanbanBoardProps) {
         if (status === "SUBSCRIBED") {
           const { data: { user } } = await supabase.auth.getUser();
           if (user) {
+            // Fetch avatar from profiles
+            const { data: profile } = await supabase
+              .from("profiles")
+              .select("username, avatar_url")
+              .eq("id", user.id)
+              .single();
+
             await channel.track({
               user_id: user.id,
-              username: user.user_metadata.username || user.email,
+              username: profile?.username || user.user_metadata.username || user.email,
+              avatar_url: profile?.avatar_url || "",
               online_at: new Date().toISOString(),
             });
           }
@@ -879,10 +887,18 @@ export default function KanbanBoard({ projectId }: KanbanBoardProps) {
             <div className="flex -space-x-2 overflow-hidden shrink-0">
               {collaborators.map((collab, idx) => (
                 <Tooltip key={idx} text={collab.username || "Collaborator"}>
-                  <div
-                    className="inline-block h-6 w-6 rounded-full ring-2 ring-white dark:ring-zinc-950 bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-[10px] font-bold text-zinc-600 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700 shadow-sm"
-                  >
-                    {collab.username?.charAt(0).toUpperCase()}
+                  <div className="inline-block h-7 w-7 rounded-full ring-2 ring-white dark:ring-zinc-950 overflow-hidden bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 shadow-sm">
+                    {collab.avatar_url ? (
+                      <img
+                        src={collab.avatar_url}
+                        alt={collab.username}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-[10px] font-bold text-zinc-600 dark:text-zinc-400">
+                        {collab.username?.charAt(0).toUpperCase()}
+                      </div>
+                    )}
                   </div>
                 </Tooltip>
               ))}

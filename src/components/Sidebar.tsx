@@ -1,10 +1,12 @@
-import { Plus, FolderKanban, LogOut, Loader2, Trash2, Pencil, X, Archive, RotateCcw, Check, ChevronRight, Users } from "lucide-react";
-import { useState } from "react";
+import { Plus, FolderKanban, LogOut, Loader2, Trash2, Pencil, X, Archive, RotateCcw, Check, ChevronRight, Users, Settings } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/lib/supabase";
 import { Tooltip } from "./ui/Tooltip";
 import { useToast } from "./ui/Toast";
 import ProjectModal from "./modals/ProjectModal";
 import { createPortal } from "react-dom";
+import Link from "next/link";
 
 export interface Project {
   id: string;
@@ -43,10 +45,13 @@ export default function Sidebar({
   onClose,
 }: SidebarProps) {
   const { showToast } = useToast();
+  const [profile, setProfile] = useState<{ username: string; avatar_url: string | null } | null>(null);
+  const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const profileMenuRef = useRef<HTMLDivElement>(null);
   const [projectToRestore, setProjectToRestore] = useState<{ id: string; title: string } | null>(null);
   const [projectToArchive, setProjectToArchive] = useState<{ id: string; title: string } | null>(null);
   const [projectToDelete, setProjectToDelete] = useState<string | null>(null);
-  const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
   const [isArchivedExpanded, setIsArchivedExpanded] = useState(false);
   const [projectModalMode, setProjectModalMode] = useState<"create" | "edit">("create");
   const [projectModalTitle, setProjectModalTitle] = useState("");
@@ -54,6 +59,51 @@ export default function Sidebar({
 
   const activeProjects = projects.filter((p) => !p.archived_at);
   const archivedProjects = projects.filter((p) => p.archived_at);
+
+  useEffect(() => {
+    if (!currentUserId) return;
+    const fetchProfile = async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("username, avatar_url")
+        .eq("id", currentUserId)
+        .single();
+      if (data) setProfile(data);
+    };
+    fetchProfile();
+
+    // Subscribe to profile changes
+    const profileChannel = supabase
+      .channel(`profile_${currentUserId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "profiles",
+          filter: `id=eq.${currentUserId}`,
+        },
+        (payload: any) => {
+          setProfile(payload.new);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(profileChannel);
+    };
+  }, [currentUserId]);
+
+  // Close profile menu on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(e.target as Node)) {
+        setProfileMenuOpen(false);
+      }
+    };
+    if (profileMenuOpen) document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [profileMenuOpen]);
 
   const handleCreate = async (title: string) => {
     try {
@@ -309,14 +359,58 @@ export default function Sidebar({
         )}
       </div>
 
-      <div className="p-3 border-t border-zinc-200 dark:border-zinc-800">
+      {/* Profile trigger (with popover menu) */}
+      <div className="p-3 border-t border-zinc-200/50 dark:border-zinc-800/50 relative" ref={profileMenuRef}>
         <button
-          onClick={onLogout}
-          className="flex items-center gap-2 w-full px-3 py-2 text-sm text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800/30 hover:text-zinc-900 dark:hover:text-zinc-100 rounded-lg transition-colors cursor-pointer"
+          onClick={() => setProfileMenuOpen((v) => !v)}
+          className="flex items-center gap-3 w-full p-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors group text-left"
         >
-          <LogOut className="w-4 h-4" />
-          <span>Sign Out</span>
+          <div className="w-8 h-8 rounded-full bg-zinc-200 dark:bg-zinc-800 border-2 border-white dark:border-zinc-900 overflow-hidden shrink-0">
+            <img
+              src={profile?.avatar_url || "https://oqhjxepxjzkfunemjvqp.supabase.co/storage/v1/object/public/avatars/user-default.png"}
+              alt="Avatar"
+              className="w-full h-full object-cover"
+            />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-bold text-zinc-900 dark:text-zinc-100 truncate leading-tight">
+              {profile?.username || "—"}
+            </p>
+            <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-widest">
+              My account
+            </p>
+          </div>
+          <ChevronRight
+            className={`w-4 h-4 text-zinc-400 transition-transform duration-200 ${
+              profileMenuOpen ? "rotate-90" : ""
+            }`}
+          />
         </button>
+
+        {/* Popover menu */}
+        {profileMenuOpen && (
+          <div className="absolute bottom-full left-3 right-3 mb-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-xl overflow-hidden z-50">
+            <Link
+              href="/profile"
+              onClick={() => setProfileMenuOpen(false)}
+              className="flex items-center gap-3 px-4 py-3 text-sm font-semibold text-zinc-700 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
+            >
+              <Settings className="w-4 h-4 text-zinc-400" />
+              Profile Settings
+            </Link>
+            <div className="border-t border-zinc-100 dark:border-zinc-800" />
+            <button
+              onClick={() => {
+                setProfileMenuOpen(false);
+                onLogout();
+              }}
+              className="flex items-center gap-3 w-full px-4 py-3 text-sm font-semibold text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors"
+            >
+              <LogOut className="w-4 h-4" />
+              Sign Out
+            </button>
+          </div>
+        )}
       </div>
 
       <ProjectModal
