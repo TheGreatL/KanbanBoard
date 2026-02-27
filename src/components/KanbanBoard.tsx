@@ -247,7 +247,7 @@ export default function KanbanBoard({ projectId }: KanbanBoardProps) {
     const channel = supabase.channel(`project:${projectId}`, {
       config: {
         presence: {
-          key: projectId,
+          key: currentUserId || "anonymous",
         },
       },
     });
@@ -317,8 +317,19 @@ export default function KanbanBoard({ projectId }: KanbanBoardProps) {
       .on("broadcast", { event: "drag-end" }, handleBroadcast)
       .on("presence", { event: "sync" }, () => {
         const state = channel.presenceState();
-        const users = Object.values(state).flat();
-        setCollaborators(users);
+        
+        // Flatten all presences and deduplicate by user_id
+        const allPresences = Object.values(state).flat();
+        const uniqueUserMap = new Map();
+        
+        allPresences.forEach((p: any) => {
+          if (p.user_id) {
+            // Newer connections for the same user will overwrite older ones in the Map
+            uniqueUserMap.set(p.user_id, p);
+          }
+        });
+
+        setCollaborators(Array.from(uniqueUserMap.values()));
       })
       .on("presence", { event: "join" }, ({ key, newPresences }) => {
       })
