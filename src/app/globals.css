@@ -16,14 +16,49 @@
 }
 
 :root {
-  --background: #fafafa;
-  --foreground: #18181b;
+  --background: #fdfdfd;
+  --foreground: #09090b;
+  --primary: #3b82f6;
+  --primary-foreground: #ffffff;
+  --secondary: #f4f4f5;
+  --secondary-foreground: #18181b;
+  --muted: #f4f4f5;
+  --muted-foreground: #71717a;
+  --accent: #f4f4f5;
+  --accent-foreground: #18181b;
+  --destructive: #ef4444;
+  --destructive-foreground: #fafafa;
+  --border: #e4e4e7;
+  --input: #e4e4e7;
+  --ring: #3b82f6;
+  --radius: 0.75rem;
+
+  /* Glassmorphism tokens */
+  --glass-bg: rgba(255, 255, 255, 0.7);
+  --glass-border: rgba(228, 228, 231, 0.5);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #09090b;
-    --foreground: #fafafa;
+    --background: #020202;
+    --foreground: #f4f4f5;
+    --primary: #3b82f6;
+    --primary-foreground: #ffffff;
+    --secondary: #18181b;
+    --secondary-foreground: #f4f4f5;
+    --muted: #18181b;
+    --muted-foreground: #a1a1aa;
+    --accent: #18181b;
+    --accent-foreground: #f4f4f5;
+    --destructive: #7f1d1d;
+    --destructive-foreground: #f4f4f5;
+    --border: #27272a;
+    --input: #27272a;
+    --ring: #3b82f6;
+
+    /* Glassmorphism tokens dark */
+    --glass-bg: rgba(9, 9, 11, 0.7);
+    --glass-border: rgba(39, 39, 42, 0.5);
   }
 }
 
@@ -31,13 +66,37 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  overflow-x: hidden;
+}
+
+@utility glass {
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+}
+
+@utility hide-scrollbar {
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
+  &::-webkit-scrollbar {
+    display: none; /* Chrome, Safari and Opera */
+  }
 }
 
 button {
   cursor: pointer;
+  transition: all 0.2s ease;
 }
 
 button:disabled {
   cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.kanban-board-container {
+  height: 100vh;
+  width: 100vw;
+  display: flex;
+  overflow: hidden;
 }
 

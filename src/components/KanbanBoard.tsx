@@ -10,6 +10,7 @@ import {
   DragOverEvent,
   DragEndEvent,
   CollisionDetection,
+  MeasuringStrategy,
 } from "@dnd-kit/core";
 import { SortableContext, arrayMove, horizontalListSortingStrategy } from "@dnd-kit/sortable";
 import { createPortal } from "react-dom";
@@ -23,6 +24,7 @@ import { Columns, Loader2, Maximize, Plus, Share2, Users, ZoomIn, ZoomOut } from
 import ShareModal from "./modals/ShareModal";
 import AddTaskModal from "./modals/AddTaskModal";
 import AddColumnModal from "./modals/AddColumnModal";
+import { BoardSkeleton } from "./ui/Skeleton";
 interface KanbanBoardProps {
   projectId: string;
 }
@@ -37,11 +39,11 @@ function ZoomControls() {
   });
 
   return (
-    <div className="absolute bottom-6 right-6 flex items-center gap-2 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl p-1.5 shadow-sm select-none z-50 no-pan">
+    <div className="absolute top-auto bottom-6 right-6 flex items-center gap-1 glass rounded-2xl p-1.5 shadow-xl z-50 no-pan animate-in slide-in-from-bottom-4 duration-500">
       <Tooltip text="Zoom Out">
         <button
           onClick={() => zoomOut(0.2)}
-          className="p-2 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-900 rounded-lg transition-colors"
+          className="p-2 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-xl transition-all active:scale-95"
         >
           <ZoomOut className="w-5 h-5" />
         </button>
@@ -49,28 +51,26 @@ function ZoomControls() {
       <Tooltip text="Zoom In">
         <button
           onClick={() => zoomIn(0.2)}
-          className="p-2 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-900 rounded-lg transition-colors"
+          className="p-2 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-xl transition-all active:scale-95"
         >
           <ZoomIn className="w-5 h-5" />
         </button>
       </Tooltip>
-      <div className="w-px h-6 bg-zinc-200 dark:bg-zinc-800 mx-1" />
+      <div className="w-px h-6 bg-zinc-200/50 dark:bg-zinc-800/50 mx-1" />
       <Tooltip text="Reset Camera">
         <button
           onClick={() => resetTransform()}
-          className="p-2 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-900 rounded-lg transition-colors cursor-pointer"
+          className="p-2 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-xl transition-all active:scale-95"
         >
           <Maximize className="w-5 h-5" />
         </button>
       </Tooltip>
-      <div className="w-px h-6 bg-zinc-200 dark:bg-zinc-800 mx-0.5" />
-      <Tooltip text="Current Zoom">
-        <div
-          className="px-3 py-2 text-zinc-500 flex items-center justify-center min-w-[60px]"
-        >
-          <span className="text-xs font-semibold tabular-nums text-zinc-400 dark:text-zinc-600">{displayScale}%</span>
+      <div className="hidden lg:flex items-center">
+        <div className="w-px h-6 bg-zinc-200/50 dark:bg-zinc-800/50 mx-1" />
+        <div className="px-3 py-2 text-zinc-500 flex items-center justify-center min-w-[60px]">
+          <span className="text-xs font-bold tabular-nums text-zinc-400 dark:text-zinc-500">{displayScale}%</span>
         </div>
-      </Tooltip>
+      </div>
     </div>
   );
 }
@@ -328,9 +328,17 @@ export default function KanbanBoard({ projectId }: KanbanBoardProps) {
         if (status === "SUBSCRIBED") {
           const { data: { user } } = await supabase.auth.getUser();
           if (user) {
+            // Fetch avatar from profiles
+            const { data: profile } = await supabase
+              .from("profiles")
+              .select("username, avatar_url")
+              .eq("id", user.id)
+              .single();
+
             await channel.track({
               user_id: user.id,
-              username: user.user_metadata.username || user.email,
+              username: profile?.username || user.user_metadata.username || user.email,
+              avatar_url: profile?.avatar_url || "",
               online_at: new Date().toISOString(),
             });
           }
@@ -377,6 +385,9 @@ export default function KanbanBoard({ projectId }: KanbanBoardProps) {
     const nowStr = new Date().toISOString();
     const newTask: Task = { id: tempId, column_id: columnId, project_id: projectId, title, content, position: newPos, created_at: nowStr };
     updateTasks((prev) => [...prev, newTask]);
+    
+    // Close modal immediately for zero-latency UI
+    setIsAddingTask(false);
 
     const { data } = await supabase
       .from("tasks")
@@ -386,11 +397,6 @@ export default function KanbanBoard({ projectId }: KanbanBoardProps) {
 
     if (data) {
       updateTasks((prev) => prev.map((t) => (t.id === tempId ? data : t)));
-      showToast({ 
-        type: "success", 
-        title: "Task Created", 
-        message: `"${title}" has been added to the column.` 
-      });
     }
   };
 
@@ -540,11 +546,30 @@ export default function KanbanBoard({ projectId }: KanbanBoardProps) {
   };
 
   const addColumn = async (title: string, color: string) => {
-    // New column should go before the "Archived" column
-    // The "Archived" column should always be at the highest position
     const archivePool = columns.find(c => c.is_archive_pool);
     const regularCols = columns.filter(c => !c.is_archive_pool);
     const newPos = regularCols.length;
+
+    // Optimistic update
+    const tempId = crypto.randomUUID();
+    const tempColumn: ColumnType = {
+      id: tempId,
+      project_id: projectId,
+      title,
+      color: color as any,
+      position: newPos,
+      created_at: new Date().toISOString(),
+      archived_at: null,
+      is_archive_pool: false
+    };
+
+    if (archivePool) {
+      updateColumns([...regularCols, tempColumn, { ...archivePool, position: newPos + 1 }]);
+    } else {
+      updateColumns([...regularCols, tempColumn]);
+    }
+    
+    setIsAddingColumn(false);
 
     const { data } = await supabase
       .from("columns")
@@ -553,16 +578,14 @@ export default function KanbanBoard({ projectId }: KanbanBoardProps) {
       .single();
 
     if (data) {
-      // If we have an archive pool, we need to make sure it's still at the end
+      updateColumns((prev) => prev.map((c) => (c.id === tempId ? data : c)));
+      
       if (archivePool) {
-        const updatedPool = { ...archivePool, position: newPos + 1 };
-        updateColumns([...regularCols, data, updatedPool]);
-        // Update archive pool position in DB too
         await supabase.from("columns").update({ position: newPos + 1 }).eq("id", archivePool.id);
-      } else {
-        updateColumns([...regularCols, data]);
       }
+      
       if (!selectedColumnId) setSelectedColumnId(data.id);
+      
       showToast({ 
         type: "success", 
         title: "Column Added", 
@@ -817,11 +840,7 @@ export default function KanbanBoard({ projectId }: KanbanBoardProps) {
   };
 
   if (isLoading) {
-    return (
-      <div className="flex-1 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-zinc-300 dark:text-zinc-700" />
-      </div>
-    );
+    return <BoardSkeleton />;
   }
 
   const openGlobalAddTask = (columnId?: string) => {
@@ -835,85 +854,100 @@ export default function KanbanBoard({ projectId }: KanbanBoardProps) {
 
   return (
     <div className="flex flex-col h-full w-full min-w-0 overflow-hidden touch-none relative">
-      {/* Canvas Header Bar */}
-      <div className="flex items-center justify-between px-6 py-3 border-b border-zinc-200 dark:border-zinc-800 bg-white/80 dark:bg-zinc-950/80 backdrop-blur-md z-[60]">
-        <div className="flex items-center gap-4">
-          <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
-            <Columns className="w-4 h-4 text-zinc-500" />
-            {projectName || "Board Canvas"}
-          </h2>
-          <div className="h-4 w-px bg-zinc-200 dark:bg-zinc-800" />
-          <span className="text-xs text-zinc-500 font-medium">{columns.length} Columns • {tasks.length} Tasks</span>
-          <div className="h-4 w-px bg-zinc-200 dark:bg-zinc-800" />
-          <div className="flex -space-x-2 overflow-hidden">
-            {collaborators.map((collab, idx) => (
-              <Tooltip key={idx} text={collab.username || "Collaborator"}>
-                <div
-                  className="inline-block h-6 w-6 rounded-full ring-2 ring-white dark:ring-zinc-950 bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-[10px] font-bold text-zinc-600 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700"
-                >
-                  {collab.username?.charAt(0).toUpperCase()}
-                </div>
-              </Tooltip>
-            ))}
-            {collaborators.length === 0 && (
-              <div className="flex items-center gap-1.5 text-xs text-zinc-400">
-                <Users className="w-3 h-3" />
-                <span>Just you</span>
+      <DndContext
+        sensors={sensors}
+        collisionDetection={customCollisionDetection}
+        onDragStart={onDragStart}
+        onDragOver={onDragOver}
+        onDragEnd={onDragEnd}
+        autoScroll={false}
+        measuring={{
+          droppable: {
+            strategy: MeasuringStrategy.Always,
+          },
+        }}
+      >
+        {/* Canvas Header Bar */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between px-4 lg:px-6 py-4 sm:py-3 border-b border-zinc-200/50 dark:border-zinc-800/50 glass z-[60] gap-4 sm:gap-2">
+          <div className="flex items-center gap-3 lg:gap-4 overflow-hidden w-full sm:w-auto">
+            <div className="flex items-center gap-2 overflow-hidden">
+              <div className="w-8 h-8 rounded-lg bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center shrink-0">
+                <Columns className="w-4 h-4 text-zinc-500" />
               </div>
-            )}
+              <h2 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 truncate tracking-tight">
+                {projectName || "Board Canvas"}
+              </h2>
+            </div>
+            <div className="hidden lg:block h-4 w-px bg-zinc-200 dark:bg-zinc-800" />
+            <span className="hidden lg:block text-[10px] text-zinc-500 font-bold uppercase tracking-wider">{columns.length} Columns • {tasks.length} Tasks</span>
+            <div className="h-4 w-px bg-zinc-200 dark:bg-zinc-800" />
+            <div className="flex -space-x-2 overflow-hidden shrink-0">
+              {collaborators.map((collab, idx) => (
+                <Tooltip key={idx} text={collab.username || "Collaborator"}>
+                  <div className="inline-block h-7 w-7 rounded-full ring-2 ring-white dark:ring-zinc-950 overflow-hidden bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 shadow-sm">
+                    {collab.avatar_url ? (
+                      <img
+                        src={collab.avatar_url}
+                        alt={collab.username}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-[10px] font-bold text-zinc-600 dark:text-zinc-400">
+                        {collab.username?.charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                  </div>
+                </Tooltip>
+              ))}
+              {collaborators.length === 0 && (
+                <div className="flex items-center gap-1.5 text-[10px] text-zinc-400 font-bold uppercase tracking-wider">
+                  <Users className="w-3 h-3" />
+                  <span>Just you</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+            <button
+              onClick={() => openAddTaskModal()}
+              disabled={columns.length === 0}
+              className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 text-xs font-bold bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 rounded-xl hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-all shadow-lg shadow-zinc-950/20 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              Task
+            </button>
+            <button
+              onClick={openAddColumnModal}
+              className="p-2 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 glass rounded-xl transition-all shadow-sm active:scale-95 cursor-pointer"
+            >
+              <Plus className="w-5 h-5" />
+            </button>
+            <button
+              onClick={openShareModal}
+              className="p-2 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 glass rounded-xl transition-all shadow-sm active:scale-95 cursor-pointer"
+            >
+              <Share2 className="w-5 h-5" />
+            </button>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => openAddTaskModal()}
-            disabled={columns.length === 0}
-            className="flex items-center gap-2 px-3 py-1.5 text-xs font-semibold bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 rounded-lg hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            Add Task
-          </button>
-          <button
-            onClick={openAddColumnModal}
-            className="flex items-center gap-2 px-3 py-1.5 text-xs font-semibold bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 border border-zinc-200 dark:border-zinc-800 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-all shadow-sm cursor-pointer"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            Add Column
-          </button>
-          <button
-            onClick={openShareModal}
-            className="flex items-center gap-2 px-3 py-1.5 text-xs font-semibold bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 border border-zinc-200 dark:border-zinc-800 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-all shadow-sm cursor-pointer"
-          >
-            <Share2 className="w-3.5 h-3.5" />
-            Share
-          </button>
-        </div>
-      </div>
-
-      <TransformWrapper
-        initialScale={1}
-        minScale={0.1}
-        maxScale={2}
-        wheel={{ step: 0.08 }}
-        pinch={{ step: 5 }}
-        doubleClick={{ disabled: true }}
-        panning={{
-          excluded: ["no-pan", "input", "textarea", "button", "select"],
-          velocityDisabled: true,
-        }}
-        limitToBounds={false}
-      >
-        <TransformComponent
-          wrapperStyle={{ width: "100%", height: "100%", overflow: "hidden" }}
-          contentStyle={{ width: "max-content", height: "max-content", padding: "80px 32px 300px 32px" }}
+        <TransformWrapper
+          initialScale={1}
+          minScale={0.1}
+          maxScale={2}
+          wheel={{ step: 0.08 }}
+          pinch={{ step: 5 }}
+          doubleClick={{ disabled: true }}
+          panning={{
+            excluded: ["no-pan", "input", "textarea", "button", "select"],
+            velocityDisabled: true,
+          }}
+          limitToBounds={false}
         >
-          <DndContext
-            sensors={sensors}
-            collisionDetection={customCollisionDetection}
-            onDragStart={onDragStart}
-            onDragOver={onDragOver}
-            onDragEnd={onDragEnd}
-            autoScroll={false}
+          <TransformComponent
+            wrapperStyle={{ width: "100%", height: "100%", overflow: "hidden" }}
+            contentStyle={{ width: "max-content", height: "max-content", padding: "80px 32px 300px 32px" }}
           >
             <div className="flex gap-6 items-start">
               <SortableContext items={columnsId} strategy={horizontalListSortingStrategy}>
@@ -947,34 +981,34 @@ export default function KanbanBoard({ projectId }: KanbanBoardProps) {
                 <span className="font-medium text-sm">Add another column</span>
               </button>
             </div>
+          </TransformComponent>
 
-            {typeof window !== "undefined" &&
-              createPortal(
-                <DragOverlay>
-                  {activeColumn && (
-                    <Column
-                      column={activeColumn}
-                      tasks={tasks.filter((t) => t.column_id === activeColumn.id)}
-                      archiveColumn={() => {}}
-                      deleteTask={() => {}}
-                      restoreTask={async () => {}}
-                      addTask={async () => {}}
-                      updateTask={updateTask}
-                      updateColumnColor={updateColumnColor}
-                      updateColumnTitle={updateColumnTitle}
-                      isOverlay
-                    />
-                  )}
-                  {activeTask && <TaskCard task={activeTask} deleteTask={deleteTask} isOverlay />}
-                </DragOverlay>,
-                document.body
+          {/* Navigation Controls */}
+          <ZoomControls />
+        </TransformWrapper>
+
+        {typeof window !== "undefined" &&
+          createPortal(
+            <DragOverlay dropAnimation={null}>
+              {activeColumn && (
+                <Column
+                  column={activeColumn}
+                  tasks={tasks.filter((t) => t.column_id === activeColumn.id)}
+                  archiveColumn={() => {}}
+                  deleteTask={() => {}}
+                  restoreTask={async () => {}}
+                  addTask={async () => {}}
+                  updateTask={updateTask}
+                  updateColumnColor={updateColumnColor}
+                  updateColumnTitle={updateColumnTitle}
+                  isOverlay
+                />
               )}
-          </DndContext>
-        </TransformComponent>
-
-        {/* Navigation Controls */}
-        <ZoomControls />
-      </TransformWrapper>
+              {activeTask && <TaskCard task={activeTask} deleteTask={deleteTask} isOverlay />}
+            </DragOverlay>,
+            document.body
+          )}
+      </DndContext>
 
       {/* Modal Components */}
       <AddTaskModal

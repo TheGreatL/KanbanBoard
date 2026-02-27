@@ -140,7 +140,10 @@ DROP POLICY IF EXISTS "Owners and editors can update projects" ON projects;
 CREATE POLICY "Owners and editors can update projects" ON projects
   FOR UPDATE 
   USING (auth.uid() = user_id OR is_project_admin(id, auth.uid()))
-  WITH CHECK (auth.uid() = user_id OR is_project_admin(id, auth.uid()));
+  WITH CHECK (
+    auth.uid() = user_id OR -- Owners can update everything
+    (is_project_admin(id, auth.uid()) AND user_id = get_project_owner(id)) -- Editors cannot change project owner
+  );
 
 DROP POLICY IF EXISTS "Owners can delete projects" ON projects;
 CREATE POLICY "Owners can delete projects" ON projects
@@ -152,10 +155,13 @@ CREATE POLICY "Users can view members of their projects" ON project_members
   FOR SELECT USING (is_project_member(project_id, auth.uid()));
 
 DROP POLICY IF EXISTS "Owners and editors can manage project members" ON project_members;
-CREATE POLICY "Owners and editors can manage project members" ON project_members
+CREATE POLICY "Owners can manage all project members" ON project_members
   FOR ALL 
-  USING (is_project_admin(project_id, auth.uid()))
-  WITH CHECK (is_project_admin(project_id, auth.uid()));
+  USING (get_project_owner(project_id) = auth.uid());
+
+CREATE POLICY "Editors can invite viewers" ON project_members
+  FOR INSERT
+  WITH CHECK (is_project_admin(project_id, auth.uid()) AND role = 'viewer');
 
 -- Columns Policies
 DROP POLICY IF EXISTS "Users can view columns" ON columns;
