@@ -84,6 +84,7 @@ export default function KanbanBoard({ projectId }: KanbanBoardProps) {
   const [activeTask, setActiveTask] = useState<Task | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [collaborators, setCollaborators] = useState<any[]>([]);
+  const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
 
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [isSharing, setIsSharing] = useState(false);
@@ -145,9 +146,11 @@ export default function KanbanBoard({ projectId }: KanbanBoardProps) {
     setIsLoading(true);
 
     const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      setCurrentUserId(user.id);
+    if (!user) {
+      setIsLoading(false);
+      return;
     }
+    setCurrentUserId(user.id);
 
     // Fetch project details
     const { data: project } = await supabase
@@ -158,6 +161,31 @@ export default function KanbanBoard({ projectId }: KanbanBoardProps) {
     
     if (project) {
       setProjectName(project.title);
+      
+      // Fetch user role for this project
+      const { data: member } = await supabase
+        .from("project_members")
+        .select("role")
+        .eq("project_id", projectId)
+        .eq("user_id", user.id)
+        .single();
+      
+      if (member) {
+        setCurrentUserRole(member.role);
+      } else {
+        // Check if user is the direct owner of the project
+        const { data: directProject } = await supabase
+          .from("projects")
+          .select("user_id")
+          .eq("id", projectId)
+          .single();
+        
+        if (directProject?.user_id === user.id) {
+          setCurrentUserRole("owner");
+        } else {
+          setCurrentUserRole(null);
+        }
+      }
     }
 
     // Fetch columns (excluding archived ones, except the pool)
@@ -387,6 +415,10 @@ export default function KanbanBoard({ projectId }: KanbanBoardProps) {
   }, [throttleMouseMove]);
 
   const columnsId = useMemo(() => columns.map((col) => col.id), [columns]);
+  
+  const isEditable = useMemo(() => {
+    return currentUserRole === "owner" || currentUserRole === "editor";
+  }, [currentUserRole]);
 
   const addTask = async (columnId: string, title: string, content: string) => {
     const colTasks = tasks.filter((t) => t.column_id === columnId);
@@ -414,10 +446,14 @@ export default function KanbanBoard({ projectId }: KanbanBoardProps) {
   // Modal Open Handlers
   const openShareModal = () => setIsSharing(true);
   const openAddTaskModal = (columnId?: string) => {
+    if (!isEditable) return;
     if (columnId) setSelectedColumnId(columnId);
     setIsAddingTask(true);
   };
-  const openAddColumnModal = () => setIsAddingColumn(true);
+  const openAddColumnModal = () => {
+    if (!isEditable) return;
+    setIsAddingColumn(true);
+  };
 
   const deleteTask = async (id: string) => {
     const task = tasks.find(t => t.id === id);
@@ -818,7 +854,7 @@ export default function KanbanBoard({ projectId }: KanbanBoardProps) {
             id: t.id,
             column_id: t.column_id,
             position: idx,
-            project_id: t.project_id || projectId,
+            project_id: projectId,
             content: t.content,
             title: t.title,
             archived_at: t.archived_at
@@ -922,24 +958,32 @@ export default function KanbanBoard({ projectId }: KanbanBoardProps) {
           <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
             <button
               onClick={() => openAddTaskModal()}
-              disabled={columns.length === 0}
+              disabled={columns.length === 0 || !isEditable}
               className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 text-xs font-bold bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 rounded-xl hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-all shadow-lg shadow-zinc-950/20 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
             >
               <Plus className="w-3.5 h-3.5" />
               Task
             </button>
-            <button
-              onClick={openAddColumnModal}
-              className="p-2 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 glass rounded-xl transition-all shadow-sm active:scale-95 cursor-pointer"
-            >
-              <Plus className="w-5 h-5" />
-            </button>
-            <button
-              onClick={openShareModal}
-              className="p-2 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 glass rounded-xl transition-all shadow-sm active:scale-95 cursor-pointer"
-            >
-              <Share2 className="w-5 h-5" />
-            </button>
+            <div className="flex items-center gap-3">
+              {isEditable && (
+                <button
+                  onClick={openAddColumnModal}
+                  className="hidden sm:flex items-center gap-2 px-4 py-2 text-sm bg-zinc-900 dark:bg-zinc-50 text-white dark:text-zinc-950 font-bold rounded-xl hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-all shadow-lg active:scale-95 cursor-pointer whitespace-nowrap"
+                >
+                  <Plus className="w-4 h-4" />
+                  Add Column
+                </button>
+              )}
+              {currentUserRole === "owner" && (
+                <button
+                  onClick={openShareModal}
+                  className="flex items-center gap-2 px-4 py-2 text-sm glass text-zinc-900 dark:text-zinc-100 font-bold rounded-xl hover:bg-white/40 active:scale-95 transition-all shadow-md cursor-pointer"
+                >
+                  <Share2 className="w-4 h-4" />
+                  Share
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
@@ -980,6 +1024,7 @@ export default function KanbanBoard({ projectId }: KanbanBoardProps) {
                     updateTask={updateTask}
                     updateColumnColor={updateColumnColor}
                     updateColumnTitle={updateColumnTitle}
+                    isEditable={isEditable}
                   />
                 ))}
               </SortableContext>

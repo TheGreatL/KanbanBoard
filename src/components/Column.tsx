@@ -32,6 +32,7 @@ interface ColumnProps {
   updateColumnTitle?: (columnId: string, title: string) => Promise<void>;
   isOverlay?: boolean;
   remoteDragging?: { taskId: string; columnId: string; username: string }[];
+  isEditable?: boolean;
 }
 
 const AVAILABLE_COLORS = ["zinc", "blue", "rose", "emerald", "amber", "indigo", "violet", "cyan", "teal", "fuchsia", "orange"];
@@ -104,6 +105,7 @@ export default function Column({
   updateColumnTitle,
   isOverlay,
   remoteDragging = [],
+  isEditable = true,
 }: ColumnProps) {
   const [showColorPicker, setShowColorPicker] = useState(false);
   const colorPickerRef = useRef<HTMLDivElement>(null);
@@ -114,7 +116,7 @@ export default function Column({
   const { setNodeRef, attributes, listeners, transform, transition, isDragging } = useSortable({
     id: column.id,
     data: { type: "Column", column },
-    disabled: isOverlay,
+    disabled: isOverlay || !isEditable,
   });
 
   const style = {
@@ -188,7 +190,7 @@ export default function Column({
         {/* Column Header */}
         <div className="no-pan p-4 flex items-center gap-2 border-b border-zinc-200/50 dark:border-zinc-800/50 relative group/header">
           {/* Drag handle */}
-          {!column.is_archive_pool && (
+          {!column.is_archive_pool && isEditable && (
             <Tooltip text="Drag to reorder column">
               <div
                 {...attributes}
@@ -202,16 +204,21 @@ export default function Column({
 
           {/* Color dot + picker */}
           <div className="relative shrink-0" ref={colorPickerRef} onPointerDown={(e) => e.stopPropagation()}>
-            <Tooltip text="Change column color">
+            <Tooltip text={isEditable ? "Change column color" : "Column color"} disabled={!isEditable && !column.color}>
               <button
+                disabled={!isEditable}
                 onPointerDown={(e) => {
+                  if (!isEditable) return;
                   e.preventDefault();
                   e.stopPropagation();
                   setShowColorPicker((prev) => !prev);
                 }}
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={(e) => e.stopPropagation()}
-                className="p-1 -ml-1 hover:bg-zinc-200 dark:hover:bg-zinc-800 rounded-md transition-colors cursor-pointer flex items-center justify-center opacity-80 hover:opacity-100 outline-none"
+                className={cn(
+                  "p-1 -ml-1 border-none rounded-md transition-colors flex items-center justify-center opacity-80 outline-none",
+                  isEditable ? "hover:bg-zinc-200 dark:hover:bg-zinc-800 cursor-pointer hover:opacity-100" : "cursor-default"
+                )}
               >
                 <div className={cn("w-3 h-3 rounded-full shadow-sm", dotColorClass)} />
               </button>
@@ -242,7 +249,7 @@ export default function Column({
 
           {/* Title */}
           <div className="flex-1 min-w-0">
-            {isEditingTitle && !column.is_archive_pool ? (
+            {isEditingTitle && !column.is_archive_pool && isEditable ? (
               <form onSubmit={handleTitleSubmit} className="flex-1 min-w-0">
                 <input
                   autoFocus
@@ -262,14 +269,14 @@ export default function Column({
                 />
               </form>
             ) : (
-              <Tooltip text={column.is_archive_pool ? "" : "Click to edit name"} disabled={column.is_archive_pool}>
+              <Tooltip text={column.is_archive_pool || !isEditable ? "" : "Click to edit name"} disabled={column.is_archive_pool || !isEditable}>
                 <h3
                   className={cn(
                     "font-semibold text-zinc-900 dark:text-zinc-100 text-sm truncate rounded px-1.5 py-0.5 -ml-1.5 transition-colors",
-                    !column.is_archive_pool && "cursor-pointer hover:bg-zinc-200/50 dark:hover:bg-zinc-800/50"
+                    !column.is_archive_pool && isEditable && "cursor-pointer hover:bg-zinc-200/50 dark:hover:bg-zinc-800/50"
                   )}
                   onClick={(e) => {
-                    if (column.is_archive_pool) return;
+                    if (column.is_archive_pool || !isEditable) return;
                     e.stopPropagation();
                     setIsEditingTitle(true);
                     setEditTitle(column.title);
@@ -289,7 +296,7 @@ export default function Column({
             {tasks.length} {tasks.length === 1 ? 'Task' : 'Tasks'}
           </span>
 
-          {!column.is_archive_pool && (
+          {!column.is_archive_pool && isEditable && (
               <Tooltip text="Archive column">
                 <button
                   onClick={(e) => {
@@ -317,6 +324,7 @@ export default function Column({
                 deleteTask={deleteTask}
                 updateTask={updateTask}
                 restoreTask={column.is_archive_pool ? restoreTask : undefined}
+                isEditable={isEditable}
               />
             ))}
           </SortableContext>
@@ -342,7 +350,7 @@ export default function Column({
           )}
 
           {/* Add Task Button */}
-          {!column.is_archive_pool && (
+          {!column.is_archive_pool && isEditable && (
             <button
               onClick={(e) => {
                 e.stopPropagation();
