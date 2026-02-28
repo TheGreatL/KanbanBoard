@@ -62,7 +62,7 @@ export default function AuthForm() {
 			const {error} = await supabase.auth.signInWithOAuth({
 				provider: 'github',
 				options: {
-					redirectTo: typeof window !== 'undefined' ? window.location.origin : undefined,
+					redirectTo: typeof window !== 'undefined' ? `${window.location.origin}/auth/callback` : undefined,
 				},
 			});
 			if (error) throw error;
