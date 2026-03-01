@@ -15,21 +15,42 @@ export default function AuthForm() {
 	const [username, setUsername] = useState('');
 	const [password, setPassword] = useState('');
 	const [loading, setLoading] = useState(false);
+	const [formError, setFormError] = useState<string | null>(null);
 	const router = useRouter();
+
+	// Clear error when switching tabs
+	const handleToggleMode = (login: boolean) => {
+		setIsLogin(login);
+		setFormError(null);
+	};
 
 	const handleAuth = async (e: React.FormEvent) => {
 		e.preventDefault();
 		setLoading(true);
 
 		try {
+			setFormError(null);
 			if (isLogin) {
 				const {error} = await supabase.auth.signInWithPassword({
 					email,
 					password,
 				});
 				if (error) throw error;
+				showToast({
+					type: 'success',
+					title: 'Login Success',
+					message: 'Welcome back! You are now logged in.',
+				});
 				router.push('/');
 			} else {
+				// Username validation: lowercase alphanumeric, hyphens, underscores
+				const usernameRegex = /^[a-z0-9-_]+$/;
+				if (!usernameRegex.test(username)) {
+					setFormError('Username can only contain lowercase letters, numbers, hyphens, and underscores.');
+					setLoading(false);
+					return;
+				}
+
 				const {error} = await supabase.auth.signUp({
 					email,
 					password,
@@ -46,11 +67,14 @@ export default function AuthForm() {
 				router.push('/');
 			}
 		} catch (err) {
-			showToast({
-				type: 'error',
-				title: isLogin ? 'Login Failed' : 'Sign Up Failed',
-				message: err instanceof Error ? err.message : 'An error occurred during authentication.',
-			});
+			let message = err instanceof Error ? err.message : 'An error occurred during authentication.';
+
+			// Map specific Database error from trigger
+			if (message.includes('Database error saving new user')) {
+				message = 'This username is already taken. Please try another one.';
+			}
+
+			setFormError(message);
 		} finally {
 			setLoading(false);
 		}
@@ -94,7 +118,7 @@ export default function AuthForm() {
 				/>
 				<button
 					type='button'
-					onClick={() => setIsLogin(true)}
+					onClick={() => handleToggleMode(true)}
 					className={cn(
 						'relative flex-1 py-2.5 text-sm font-semibold rounded-xl transition-colors duration-300 z-10 outline-none focus-visible:ring-2 focus-visible:ring-blue-500',
 						isLogin ? 'text-zinc-900 dark:text-white' : 'text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white',
@@ -103,7 +127,7 @@ export default function AuthForm() {
 				</button>
 				<button
 					type='button'
-					onClick={() => setIsLogin(false)}
+					onClick={() => handleToggleMode(false)}
 					className={cn(
 						'relative flex-1 py-2.5 text-sm font-semibold rounded-xl transition-colors duration-300 z-10 outline-none focus-visible:ring-2 focus-visible:ring-blue-500',
 						!isLogin ? 'text-zinc-900 dark:text-white' : 'text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white',
@@ -114,6 +138,14 @@ export default function AuthForm() {
 			<form
 				onSubmit={handleAuth}
 				className=' grow space-y-4'>
+				{formError && (
+					<div className='p-3 rounded-xl bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-900/20 animate-in fade-in slide-in-from-top-1 duration-200'>
+						<p className='text-xs font-semibold text-red-600 dark:text-red-400 flex items-center gap-2'>
+							<span className='w-1.5 h-1.5 rounded-full bg-red-600 dark:bg-red-400 shrink-0' />
+							{formError}
+						</p>
+					</div>
+				)}
 				{!isLogin && (
 					<div>
 						<label
@@ -126,9 +158,12 @@ export default function AuthForm() {
 							type='text'
 							required
 							value={username}
-							onChange={(e) => setUsername(e.target.value)}
+							onChange={(e) => {
+								setUsername(e.target.value);
+								setFormError(null);
+							}}
 							className='w-full px-3 py-2 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100 transition-shadow text-zinc-900 dark:text-zinc-100'
-							placeholder='John Doe'
+							placeholder='johndoe'
 						/>
 					</div>
 				)}
