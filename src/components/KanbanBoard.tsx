@@ -20,11 +20,13 @@ import TaskCard, {Task} from './TaskCard';
 import {supabase} from '@/lib/supabase';
 import {Tooltip} from './ui/Tooltip';
 import {useToast} from './ui/Toast';
-import {Columns, Loader2, Lock, Maximize, Plus, Share2, Users, ZoomIn, ZoomOut} from 'lucide-react';
+import {Columns, Lock, Maximize, Plus, Share2, Users, ZoomIn, ZoomOut} from 'lucide-react';
 import ShareModal from './modals/ShareModal';
 import AddTaskModal from './modals/AddTaskModal';
 import AddColumnModal from './modals/AddColumnModal';
 import {BoardSkeleton} from './ui/Skeleton';
+import { throttle } from '@/lib/utils';
+import Image from 'next/image';
 interface KanbanBoardProps {
 	projectId: string;
 }
@@ -80,6 +82,7 @@ export default function KanbanBoard({projectId}: KanbanBoardProps) {
 	const [activeColumn, setActiveColumn] = useState<ColumnType | null>(null);
 	const [activeTask, setActiveTask] = useState<Task | null>(null);
 	const [isLoading, setIsLoading] = useState(true);
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	const [collaborators, setCollaborators] = useState<any[]>([]);
 	const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
 
@@ -119,8 +122,8 @@ export default function KanbanBoard({projectId}: KanbanBoardProps) {
 	}, []);
 
 	// Advanced Realtime State
-	const [remoteCursors, setRemoteCursors] = useState<Record<string, {x: number; y: number; username: string}>>({});
 	const [remoteDragging, setRemoteDragging] = useState<Record<string, {taskId: string; columnId: string; username: string}>>({});
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	const channelRef = useRef<any>(null);
 
 	const AVAILABLE_COLORS = ['zinc', 'blue', 'rose', 'emerald', 'amber', 'indigo', 'violet', 'cyan', 'teal', 'fuchsia', 'orange'];
@@ -187,7 +190,7 @@ export default function KanbanBoard({projectId}: KanbanBoardProps) {
 			.or('archived_at.is.null,is_archive_pool.eq.true')
 			.order('position');
 
-		let finalCols = cols || [];
+		const finalCols = cols || [];
 
 		// Sort columns: regular columns stay in order, archived pool always goes last
 		const sortedCols = [...finalCols].sort((a, b) => {
@@ -241,12 +244,12 @@ export default function KanbanBoard({projectId}: KanbanBoardProps) {
 	useEffect(() => {
 		fetchBoardData();
 
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		const handleBroadcast = (payload: any) => {
 			if (payload.event === 'cursor') {
-				const {userId, x, y, username} = payload.payload;
-				if (userId !== currentUserId) {
-					setRemoteCursors((prev) => ({...prev, [userId]: {x, y, username}}));
-				}
+				// We no longer update remoteCursors state to avoid unnecessary board re-renders
+				// as it's not currently used in the visual layout.
+				return;
 			} else if (payload.event === 'drag') {
 				const {userId, taskId, columnId, username} = payload.payload;
 				if (userId !== currentUserId) {
@@ -336,6 +339,7 @@ export default function KanbanBoard({projectId}: KanbanBoardProps) {
 				const allPresences = Object.values(state).flat();
 				const uniqueUserMap = new Map();
 
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
 				allPresences.forEach((p: any) => {
 					if (p.user_id) {
 						// Newer connections for the same user will overwrite older ones in the Map
@@ -345,8 +349,8 @@ export default function KanbanBoard({projectId}: KanbanBoardProps) {
 
 				setCollaborators(Array.from(uniqueUserMap.values()));
 			})
-			.on('presence', {event: 'join'}, ({key, newPresences}) => {})
-			.on('presence', {event: 'leave'}, ({key, leftPresences}) => {})
+			.on('presence', {event: 'join'}, () => {})
+			.on('presence', {event: 'leave'}, () => {})
 			.subscribe(async (status) => {
 				if (status === 'SUBSCRIBED') {
 					const {
@@ -373,24 +377,27 @@ export default function KanbanBoard({projectId}: KanbanBoardProps) {
 				channelRef.current = null;
 			}
 		};
+		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [projectId, currentUserId]);
 
-	// Broadcast mouse movements
-	const throttleMouseMove = useCallback(
-		(e: MouseEvent) => {
-			if (channelRef.current && currentUserId) {
-				channelRef.current.send({
-					type: 'broadcast',
-					event: 'cursor',
-					payload: {
-						userId: currentUserId,
-						username: collaborators.find((c) => c.user_id === currentUserId)?.username || 'Unknown',
-						x: e.clientX,
-						y: e.clientY,
-					},
-				});
-			}
-		},
+	// Broadcast mouse movements (throttled to 100ms for performance)
+	const throttleMouseMove = useMemo(
+		() =>
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			throttle((e: any) => {
+				if (channelRef.current && currentUserId) {
+					channelRef.current.send({
+						type: 'broadcast',
+						event: 'cursor',
+						payload: {
+							userId: currentUserId,
+							username: collaborators.find((c) => c.user_id === currentUserId)?.username || 'Unknown',
+							x: e.clientX,
+							y: e.clientY,
+						},
+					});
+				}
+			}, 100),
 		[currentUserId, collaborators],
 	);
 
@@ -596,6 +603,7 @@ export default function KanbanBoard({projectId}: KanbanBoardProps) {
 			id: tempId,
 			project_id: projectId,
 			title,
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			color: color as any,
 			position: newPos,
 			created_at: new Date().toISOString(),
@@ -794,7 +802,8 @@ export default function KanbanBoard({projectId}: KanbanBoardProps) {
 				return 0;
 			});
 
-			const updatedColumns = finalColumns.map((col, idx) => ({...col, position: idx}));
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			const updatedColumns = finalColumns.map((col, idx) => ({...col, position: idx} as any));
 			setColumns(updatedColumns);
 
 			const columnsToUpsert = updatedColumns.map((col) => ({
@@ -814,6 +823,7 @@ export default function KanbanBoard({projectId}: KanbanBoardProps) {
 					title: 'Board Updated',
 					message: 'Column arrangement saved.',
 				});
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			} catch (err: any) {
 				console.error('Column persistence error:', err);
 				showToast({
@@ -865,6 +875,7 @@ export default function KanbanBoard({projectId}: KanbanBoardProps) {
 							`"${activeTaskInState.title}" moved to ${currentCols.find((c) => c.id === targetColumnId)?.title || 'Target'}.`
 						),
 				});
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			} catch (err: any) {
 				console.error('Task persistence error:', err);
 				showToast({
@@ -881,14 +892,6 @@ export default function KanbanBoard({projectId}: KanbanBoardProps) {
 		return <BoardSkeleton />;
 	}
 
-	const openGlobalAddTask = (columnId?: string) => {
-		if (columnId) {
-			setSelectedColumnId(columnId);
-		} else if (columns.length > 0 && !selectedColumnId) {
-			setSelectedColumnId(columns[0].id);
-		}
-		setIsAddingTask(true);
-	};
 
 	return (
 		<div className='flex flex-col h-full w-full min-w-0 overflow-hidden touch-none relative'>
@@ -935,10 +938,13 @@ export default function KanbanBoard({projectId}: KanbanBoardProps) {
 									text={collab.username || 'Collaborator'}>
 									<div className='inline-block h-7 w-7 rounded-full ring-2 ring-white dark:ring-zinc-950 overflow-hidden bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 shadow-sm'>
 										{collab.avatar_url ?
-											<img
+											<Image
 												src={collab.avatar_url}
-												alt={collab.username}
+												alt={collab.username || 'Collaborator'}
 												className='w-full h-full object-cover'
+												width={28}
+												height={28}
+												unoptimized
 											/>
 										:	<div className='w-full h-full flex items-center justify-center text-[10px] font-bold text-zinc-600 dark:text-zinc-400'>
 												{collab.username?.charAt(0).toUpperCase()}

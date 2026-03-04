@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { Plus, X, LayoutList, AlignLeft, Loader2, Check } from "lucide-react";
 import { ColumnType } from "../Column";
+import MarkdownEditor from "../ui/MarkdownEditor";
 
 interface AddTaskModalProps {
   isOpen: boolean;
@@ -54,10 +55,10 @@ export default function AddTaskModal({
   if (!isOpen || typeof window === "undefined") return null;
 
   return createPortal(
-    <div
-      className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 backdrop-blur-[2px] px-4"
-      onPointerDown={(e) => e.stopPropagation()}
-    >
+      <div
+        className="fixed inset-0 z-200 flex items-center justify-center bg-black/40 backdrop-blur-[2px] px-4"
+        onPointerDown={(e) => e.stopPropagation()}
+      >
       <div
         className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl w-full max-w-md flex flex-col gap-4 p-6"
         onKeyDown={(e) => {
@@ -80,6 +81,7 @@ export default function AddTaskModal({
               setNewTaskTitle("");
               setNewTaskContent("");
             }}
+            title="Close modal"
             className="p-1.5 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors cursor-pointer"
           >
             <X className="w-4 h-4" />
@@ -94,6 +96,7 @@ export default function AddTaskModal({
             </label>
             <select
               value={selectedColumnId}
+              title="Select column"
               onChange={(e) => onSelectedColumnIdChange(e.target.value)}
               className="w-full px-3 py-2 text-sm bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-zinc-200 dark:focus:ring-zinc-800 transition-all text-zinc-900 dark:text-zinc-100 outline-none"
             >
@@ -124,12 +127,10 @@ export default function AddTaskModal({
               <AlignLeft className="w-3 h-3" />
               Description
             </label>
-            <textarea
+            <MarkdownEditor
               value={newTaskContent}
-              onChange={(e) => setNewTaskContent(e.target.value)}
+              onChange={setNewTaskContent}
               placeholder="Add some details..."
-              rows={4}
-              className="w-full px-3 py-2 text-sm bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-zinc-200 dark:focus:ring-zinc-800 transition-all text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 resize-none outline-none"
             />
           </div>
         </div>
