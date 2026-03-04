@@ -416,7 +416,7 @@ export default function KanbanBoard({projectId}: KanbanBoardProps) {
 		const colTasks = tasks.filter((t) => t.column_id === columnId);
 		const newPos = colTasks.length > 0 ? colTasks[colTasks.length - 1].position + 1 : 0;
 
-		const tempId = `temp-${Date.now()}`;
+		const tempId = crypto.randomUUID();
 		const nowStr = new Date().toISOString();
 		const newTask: Task = {id: tempId, column_id: columnId, project_id: projectId, title, content, position: newPos, created_at: nowStr};
 		updateTasks((prev) => [...prev, newTask]);
@@ -426,7 +426,7 @@ export default function KanbanBoard({projectId}: KanbanBoardProps) {
 
 		const {data} = await supabase
 			.from('tasks')
-			.insert({column_id: columnId, project_id: projectId, title, content, position: newPos})
+			.insert({id: tempId, column_id: columnId, project_id: projectId, title, content, position: newPos})
 			.select()
 			.single();
 
@@ -619,7 +619,7 @@ export default function KanbanBoard({projectId}: KanbanBoardProps) {
 
 		setIsAddingColumn(false);
 
-		const {data} = await supabase.from('columns').insert({project_id: projectId, title, color, position: newPos}).select().single();
+		const {data} = await supabase.from('columns').insert({id: tempId, project_id: projectId, title, color, position: newPos}).select().single();
 
 		if (data) {
 			updateColumns((prev) => prev.map((c) => (c.id === tempId ? data : c)));
