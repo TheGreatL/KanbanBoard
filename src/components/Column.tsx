@@ -12,6 +12,7 @@ export interface ColumnType {
   id: string;
   project_id: string;
   title: string;
+  description?: string | null;
   color: string;
   position: number;
   created_at: string;
@@ -30,6 +31,7 @@ interface ColumnProps {
   updateTask?: (id: string, title: string, content: string) => Promise<void>;
   updateColumnColor?: (columnId: string, color: string) => Promise<void>;
   updateColumnTitle?: (columnId: string, title: string) => Promise<void>;
+  updateColumnDetails?: (columnId: string, title: string, description: string | null) => Promise<void>;
   isOverlay?: boolean;
   remoteDragging?: { taskId: string; columnId: string; username: string }[];
   isEditable?: boolean;
@@ -103,6 +105,7 @@ export default function Column({
   updateTask,
   updateColumnColor,
   updateColumnTitle,
+  updateColumnDetails,
   isOverlay,
   remoteDragging = [],
   isEditable = true,
@@ -111,6 +114,7 @@ export default function Column({
   const colorPickerRef = useRef<HTMLDivElement>(null);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editTitle, setEditTitle] = useState(column.title);
+  const [editDescription, setEditDescription] = useState(column.description || "");
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
   const { setNodeRef, attributes, listeners, transform, transition, isDragging } = useSortable({
@@ -148,14 +152,23 @@ export default function Column({
   const handleTitleSubmit = async (e?: React.FormEvent) => {
     e?.preventDefault();
     const trimmedTitle = editTitle.trim();
-    if (!trimmedTitle || trimmedTitle === column.title) {
+    if (!trimmedTitle) {
       setEditTitle(column.title);
+      setEditDescription(column.description || "");
       setIsEditingTitle(false);
       return;
     }
-    if (updateColumnTitle) {
-      await updateColumnTitle(column.id, trimmedTitle);
+    
+    // Only update if something actually changed to avoid unnecessary DB calls
+    const titleChanged = trimmedTitle !== column.title;
+    const descChanged = editDescription !== (column.description || "");
+    
+    if ((titleChanged || descChanged) && updateColumnDetails) {
+      await updateColumnDetails(column.id, trimmedTitle, editDescription || null);
+    } else if (titleChanged && updateColumnTitle) {
+       await updateColumnTitle(column.id, trimmedTitle);
     }
+
     setIsEditingTitle(false);
   };
 
@@ -247,32 +260,55 @@ export default function Column({
             )}
           </div>
 
-          {/* Title */}
-          <div className="flex-1 min-w-0">
+          {/* Title and Description */}
+          <div className="flex-1 min-w-0 flex flex-col justify-center">
             {isEditingTitle && !column.is_archive_pool && isEditable ? (
-              <form onSubmit={handleTitleSubmit} className="flex-1 min-w-0">
+              <form onSubmit={handleTitleSubmit} className="flex-1 min-w-0 flex flex-col gap-1">
                 <input
                   autoFocus
                   value={editTitle}
                   onChange={(e) => setEditTitle(e.target.value)}
-                  onBlur={() => handleTitleSubmit()}
                   onPointerDown={(e) => e.stopPropagation()}
                   onClick={(e) => e.stopPropagation()}
-                  className="w-full text-sm font-semibold text-zinc-900 dark:text-zinc-100 bg-white dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 rounded px-1.5 py-0.5 outline-none focus:ring-1 focus:ring-zinc-400 dark:focus:ring-zinc-600 transition-all"
+                  placeholder="Column Title"
+                  className="w-full text-sm font-semibold text-zinc-900 dark:text-zinc-100 bg-white dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 rounded px-1.5 py-0.5 outline-none focus:ring-1 focus:ring-zinc-400 dark:focus:ring-zinc-600 transition-all placeholder:font-normal"
                   onKeyDown={(e) => {
                     e.stopPropagation();
                     if (e.key === "Escape") {
                       setEditTitle(column.title);
+                      setEditDescription(column.description || "");
                       setIsEditingTitle(false);
+                    }
+                  }}
+                />
+                <textarea
+                  value={editDescription}
+                  onChange={(e) => setEditDescription(e.target.value)}
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={(e) => e.stopPropagation()}
+                  onBlur={() => handleTitleSubmit()}
+                  placeholder="Add a description (optional)..."
+                  rows={2}
+                  className="w-full text-xs text-zinc-600 dark:text-zinc-400 bg-white dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 rounded px-1.5 py-1 outline-none focus:ring-1 focus:ring-zinc-400 dark:focus:ring-zinc-600 transition-all resize-none"
+                  onKeyDown={(e) => {
+                    e.stopPropagation();
+                    if (e.key === "Escape") {
+                      setEditTitle(column.title);
+                      setEditDescription(column.description || "");
+                      setIsEditingTitle(false);
+                    }
+                    if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        handleTitleSubmit();
                     }
                   }}
                 />
               </form>
             ) : (
-              <Tooltip text={column.is_archive_pool || !isEditable ? "" : "Click to edit name"} disabled={column.is_archive_pool || !isEditable}>
-                <h3
+              <Tooltip text={column.is_archive_pool || !isEditable ? "" : "Click to edit name & description"} disabled={column.is_archive_pool || !isEditable}>
+                <div
                   className={cn(
-                    "font-semibold text-zinc-900 dark:text-zinc-100 text-sm truncate rounded px-1.5 py-0.5 -ml-1.5 transition-colors",
+                    "flex flex-col truncate rounded px-1.5 py-0.5 -ml-1.5 transition-colors",
                     !column.is_archive_pool && isEditable && "cursor-pointer hover:bg-zinc-200/50 dark:hover:bg-zinc-800/50"
                   )}
                   onClick={(e) => {
@@ -280,11 +316,19 @@ export default function Column({
                     e.stopPropagation();
                     setIsEditingTitle(true);
                     setEditTitle(column.title);
+                    setEditDescription(column.description || "");
                   }}
                   onPointerDown={(e) => e.stopPropagation()}
                 >
-                  {column.title}
-                </h3>
+                  <h3 className="font-semibold text-zinc-900 dark:text-zinc-100 text-sm truncate">
+                    {column.title}
+                  </h3>
+                  {column.description && !isEditingTitle && (
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400 truncate mt-0.5">
+                        {column.description}
+                    </p>
+                  )}
+                </div>
               </Tooltip>
             )}
           </div>

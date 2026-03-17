@@ -4,10 +4,12 @@ import { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { FolderKanban, X, Check, Loader2, Pencil, Plus } from "lucide-react";
 
+import { ProjectTemplate, PROJECT_TEMPLATES } from "@/lib/templates";
+
 interface ProjectModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (title: string) => Promise<void>;
+  onSubmit: (title: string, template: ProjectTemplate) => Promise<void>;
   initialTitle?: string;
   mode: "create" | "edit";
 }
@@ -20,6 +22,7 @@ export default function ProjectModal({
   mode,
 }: ProjectModalProps) {
   const [title, setTitle] = useState(initialTitle);
+  const [template, setTemplate] = useState<ProjectTemplate>("empty");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -40,7 +43,7 @@ export default function ProjectModal({
 
     setIsSubmitting(true);
     try {
-      await onSubmit(trimTitle);
+      await onSubmit(trimTitle, template);
       onClose();
     } catch (err) {
       // Error handling is managed by the parent via toast
@@ -97,6 +100,36 @@ export default function ProjectModal({
             />
           </div>
         </div>
+
+        {!isEdit && (
+          <div className="flex flex-col gap-2 mt-2">
+            <label className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
+              Project Template
+            </label>
+            <div className="flex flex-col gap-3 max-h-[400px] overflow-y-auto p-2">
+              {PROJECT_TEMPLATES.map((tmpl) => (
+                <button
+                  key={tmpl.id}
+                  type="button"
+                  onClick={() => setTemplate(tmpl.id)}
+                  className={`flex flex-col items-start text-left p-3 rounded-xl border transition-all ${
+                    template === tmpl.id
+                      ? "border-zinc-900 bg-zinc-50 text-zinc-900 dark:border-zinc-100 dark:bg-zinc-900 dark:text-white ring-1 ring-zinc-900 dark:ring-zinc-100"
+                      : "border-zinc-200 hover:border-zinc-300 text-zinc-600 dark:border-zinc-800 dark:hover:border-zinc-700 dark:text-zinc-400"
+                  }`}
+                >
+                  <span className="font-semibold text-sm mb-1">{tmpl.name}</span>
+                  <span className="text-xs opacity-90 font-medium text-zinc-800 dark:text-zinc-200 block mb-1">
+                    {tmpl.description}
+                  </span>
+                  <span className="text-[10px] opacity-70 leading-tight">
+                    {tmpl.bestFor}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="flex items-center justify-end gap-3 mt-2">
           <button

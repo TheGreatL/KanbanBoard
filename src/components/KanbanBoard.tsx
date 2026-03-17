@@ -533,14 +533,14 @@ export default function KanbanBoard({projectId}: KanbanBoardProps) {
 		}
 	};
 
-	const updateColumnTitle = async (id: string, title: string) => {
-		updateColumns((prev) => prev.map((c) => (c.id === id ? {...c, title} : c)));
-		const {error} = await supabase.from('columns').update({title}).eq('id', id);
+	const updateColumnDetails = async (id: string, title: string, description: string | null) => {
+		updateColumns((prev) => prev.map((c) => (c.id === id ? {...c, title, description} : c)));
+		const {error} = await supabase.from('columns').update({title, description}).eq('id', id);
 		if (!error) {
 			showToast({
 				type: 'success',
-				title: 'Column Renamed',
-				message: `Column renamed to "${title}".`,
+				title: 'Column Updated',
+				message: `Column updated to "${title}".`,
 			});
 		}
 	};
@@ -592,7 +592,7 @@ export default function KanbanBoard({projectId}: KanbanBoardProps) {
 		}
 	};
 
-	const addColumn = async (title: string, color: string) => {
+	const addColumn = async (title: string, color: string, description?: string) => {
 		const archivePool = columns.find((c) => c.is_archive_pool);
 		const regularCols = columns.filter((c) => !c.is_archive_pool);
 		const newPos = regularCols.length;
@@ -603,6 +603,7 @@ export default function KanbanBoard({projectId}: KanbanBoardProps) {
 			id: tempId,
 			project_id: projectId,
 			title,
+			description: description || null,
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			color: color as any,
 			position: newPos,
@@ -619,7 +620,14 @@ export default function KanbanBoard({projectId}: KanbanBoardProps) {
 
 		setIsAddingColumn(false);
 
-		const {data} = await supabase.from('columns').insert({id: tempId, project_id: projectId, title, color, position: newPos}).select().single();
+		const {data} = await supabase.from('columns').insert({
+			id: tempId, 
+			project_id: projectId, 
+			title, 
+			description: description || null,
+			color, 
+			position: newPos
+		}).select().single();
 
 		if (data) {
 			updateColumns((prev) => prev.map((c) => (c.id === tempId ? data : c)));
@@ -1032,7 +1040,7 @@ export default function KanbanBoard({projectId}: KanbanBoardProps) {
 										}}
 										updateTask={updateTask}
 										updateColumnColor={updateColumnColor}
-										updateColumnTitle={updateColumnTitle}
+										updateColumnDetails={updateColumnDetails}
 										isEditable={isEditable}
 									/>
 								))}
@@ -1066,7 +1074,7 @@ export default function KanbanBoard({projectId}: KanbanBoardProps) {
 									addTask={async () => {}}
 									updateTask={updateTask}
 									updateColumnColor={updateColumnColor}
-									updateColumnTitle={updateColumnTitle}
+									updateColumnDetails={updateColumnDetails}
 									isOverlay
 								/>
 							)}

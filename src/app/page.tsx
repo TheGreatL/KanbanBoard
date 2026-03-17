@@ -7,6 +7,7 @@ import {Loader2, LayoutDashboard, FolderKanban} from 'lucide-react';
 import Sidebar, {Project} from '@/components/Sidebar';
 import {cn} from '@/lib/utils';
 import dynamic from 'next/dynamic';
+import { ProjectTemplate, PROJECT_TEMPLATES } from '@/lib/templates';
 
 const KanbanBoard = dynamic(() => import('@/components/KanbanBoard'), {ssr: false});
 
@@ -101,7 +102,7 @@ export default function Home() {
 		};
 	}, [router, fetchProjects]);
 
-	const createProject = async (title: string) => {
+	const createProject = async (title: string, templateId: ProjectTemplate) => {
 		const {
 			data: {user},
 		} = await supabase.auth.getUser();
@@ -110,6 +111,27 @@ export default function Home() {
 		const {data} = await supabase.from('projects').insert({title, user_id: user.id}).select().single();
 
 		if (data) {
+			const templateDef = PROJECT_TEMPLATES.find(t => t.id === templateId);
+			if (templateDef && templateDef.columns.length > 0) {
+				const now = new Date().toISOString();
+				const baseColumn = {
+					project_id: data.id,
+					created_at: now,
+					archived_at: null,
+					is_archive_pool: false,
+				};
+				
+				const columnsToInsert = templateDef.columns.map((col, index) => ({
+					...baseColumn,
+					id: crypto.randomUUID(),
+					title: col.title,
+					description: col.description,
+					color: col.color,
+					position: index
+				}));
+
+				await supabase.from('columns').insert(columnsToInsert);
+			}
 			setProjects([data, ...projects]);
 			setActiveProjectId(data.id);
 		}

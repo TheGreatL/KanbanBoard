@@ -3,6 +3,7 @@
 import {useState} from 'react';
 import {supabase} from '@/lib/supabase';
 import {useRouter} from 'next/navigation';
+import Link from 'next/link';
 import {GithubIcon, Loader2} from 'lucide-react';
 import {useToast} from './ui/Toast';
 import {Tooltip} from './ui/Tooltip';
@@ -70,8 +71,8 @@ export default function AuthForm() {
 			let message = err instanceof Error ? err.message : 'An error occurred during authentication.';
 
 			// Map specific Database error from trigger
-			if (message.includes('Database error saving new user')) {
-				message = 'This username is already taken. Please try another one.';
+			if (message.includes('Database error saving new user') || message.includes('User already registered')) {
+				message = 'This username or email is already taken. Please try another one.';
 			}
 
 			setFormError(message);
@@ -186,11 +187,18 @@ export default function AuthForm() {
 				</div>
 
 				<div>
-					<label
-						htmlFor='password'
-						className='block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1'>
-						Password
-					</label>
+					<div className="flex justify-between items-center mb-1">
+						<label
+							htmlFor='password'
+							className='block text-sm font-medium text-zinc-700 dark:text-zinc-300'>
+							Password
+						</label>
+						{isLogin && (
+							<Link href="/auth/forgot-password" className="text-xs font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300 transition-colors">
+								Forgot Password?
+							</Link>
+						)}
+					</div>
 					<input
 						id='password'
 						type='password'

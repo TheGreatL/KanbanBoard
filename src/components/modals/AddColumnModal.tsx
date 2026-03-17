@@ -8,7 +8,7 @@ import { Tooltip } from "../ui/Tooltip";
 interface AddColumnModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onAddColumn: (title: string, color: string) => Promise<void>;
+  onAddColumn: (title: string, color: string, description?: string) => Promise<void>;
   availableColors: string[];
   dotColorMap: Record<string, string>;
 }
@@ -21,6 +21,7 @@ export default function AddColumnModal({
   dotColorMap,
 }: AddColumnModalProps) {
   const [newColumnTitle, setNewColumnTitle] = useState("");
+  const [newColumnDescription, setNewColumnDescription] = useState("");
   const [newColumnColor, setNewColumnColor] = useState("zinc");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const columnTitleInputRef = useRef<HTMLInputElement>(null);
@@ -40,8 +41,9 @@ export default function AddColumnModal({
     if (!trimTitle) return;
 
     setIsSubmitting(true);
-    await onAddColumn(trimTitle, newColumnColor);
+    await onAddColumn(trimTitle, newColumnColor, newColumnDescription.trim() || undefined);
     setNewColumnTitle("");
+    setNewColumnDescription("");
     setNewColumnColor("zinc");
     setIsSubmitting(false);
     onClose();
@@ -60,6 +62,7 @@ export default function AddColumnModal({
           if (e.key === "Escape") {
             onClose();
             setNewColumnTitle("");
+            setNewColumnDescription("");
             setNewColumnColor("zinc");
           }
         }}
@@ -74,6 +77,7 @@ export default function AddColumnModal({
             onClick={() => {
               onClose();
               setNewColumnTitle("");
+              setNewColumnDescription("");
               setNewColumnColor("zinc");
             }}
             className="p-1.5 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors cursor-pointer"
@@ -102,6 +106,21 @@ export default function AddColumnModal({
 
           <div className="flex flex-col gap-1.5">
             <label className="flex items-center gap-1.5 text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
+              Description <span className="text-[10px] font-normal opacity-70">(Optional)</span>
+            </label>
+            <input
+              value={newColumnDescription}
+              onChange={(e) => setNewColumnDescription(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleSubmit();
+              }}
+              className="w-full px-3 py-2 text-sm bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-zinc-200 dark:focus:ring-zinc-800 transition-all text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 outline-none"
+              placeholder="e.g. Tasks currently being worked on."
+            />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="flex items-center gap-1.5 text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
               Theme Color
             </label>
             <div className="grid grid-cols-6 gap-2 pt-1">
@@ -125,6 +144,7 @@ export default function AddColumnModal({
             onClick={() => {
               onClose();
               setNewColumnTitle("");
+              setNewColumnDescription("");
               setNewColumnColor("zinc");
             }}
             className="px-4 py-2 text-sm font-semibold text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 transition-colors cursor-pointer"

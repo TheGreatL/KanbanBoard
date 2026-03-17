@@ -8,6 +8,7 @@ import ProjectModal from "./modals/ProjectModal";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { SidebarSkeleton } from "./ui/Skeleton";
+import { ProjectTemplate } from "@/lib/templates";
 
 export interface Project {
   id: string;
@@ -21,7 +22,7 @@ interface SidebarProps {
 	activeProjectId: string | null;
   isLoading: boolean;
   onSelectProject: (id: string) => void;
-  onCreateProject: (title: string) => Promise<void>;
+  onCreateProject: (title: string, template: ProjectTemplate) => Promise<void>;
   onArchiveProject: (id: string) => Promise<void>;
   onRestoreProject: (id: string) => Promise<void>;
   onDeleteProject: (id: string) => Promise<void>;
@@ -106,9 +107,9 @@ export default function Sidebar({
     return () => document.removeEventListener("mousedown", handler);
   }, [profileMenuOpen]);
 
-  const handleCreate = async (title: string) => {
+  const handleCreate = async (title: string, template: ProjectTemplate) => {
     try {
-      await onCreateProject(title);
+      await onCreateProject(title, template);
       showToast({
         type: "success",
         title: "Project Created",
@@ -447,7 +448,7 @@ export default function Sidebar({
             </div>
             
             <p className="text-sm text-zinc-500 dark:text-zinc-400 font-medium leading-relaxed">
-              Move <span className="font-bold text-zinc-900 dark:text-zinc-100">"{projectToArchive.title}"</span> to the archives? You can restore it later if you need to work on it again.
+              Move <span className="font-bold text-zinc-900 dark:text-zinc-100">&quot;{projectToArchive.title}&quot;</span> to the archives? You can restore it later if you need to work on it again.
             </p>
 
             <div className="flex items-center justify-end gap-2 pt-2">
@@ -497,7 +498,7 @@ export default function Sidebar({
             </div>
             
             <p className="text-sm text-zinc-500 dark:text-zinc-400 font-medium leading-relaxed">
-              Restore <span className="font-bold text-zinc-900 dark:text-zinc-100">"{projectToRestore.title}"</span>? It will appear back in your active projects list.
+              Restore <span className="font-bold text-zinc-900 dark:text-zinc-100">&quot;{projectToRestore.title}&quot;</span>? It will appear back in your active projects list.
             </p>
 
             <div className="flex items-center justify-end gap-2 pt-2">
