@@ -1,4 +1,4 @@
-import { Plus, FolderKanban, LogOut, Loader2, Trash2, Pencil, X, Archive, RotateCcw, Check, ChevronRight, Users, Settings } from "lucide-react";
+import { Plus, FolderKanban, LogOut, Trash2, Pencil, X, Archive, RotateCcw, Check, ChevronRight, Users, Settings } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
@@ -58,6 +58,48 @@ export default function Sidebar({
   const [projectModalMode, setProjectModalMode] = useState<"create" | "edit">("create");
   const [projectModalTitle, setProjectModalTitle] = useState("");
   const [projectModalId, setProjectModalId] = useState<string | null>(null);
+
+  const [sidebarWidth, setSidebarWidth] = useState(256);
+  const [isResizing, setIsResizing] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(true);
+
+  useEffect(() => {
+    const handleResize = () => setIsDesktop(window.innerWidth >= 1024);
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isResizing || !isDesktop) return;
+      let newWidth = e.clientX;
+      if (newWidth < 200) newWidth = 200;
+      if (newWidth > 600) newWidth = 600;
+      setSidebarWidth(newWidth);
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+    };
+
+    if (isResizing) {
+      document.addEventListener("mousemove", handleMouseMove);
+      document.addEventListener("mouseup", handleMouseUp);
+      document.body.style.cursor = "col-resize";
+      document.body.style.userSelect = "none";
+    } else {
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    }
+
+    return () => {
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    };
+  }, [isResizing, isDesktop]);
 
   const activeProjects = projects.filter((p) => !p.archived_at);
   const archivedProjects = projects.filter((p) => p.archived_at);
@@ -259,7 +301,7 @@ export default function Sidebar({
                     e.stopPropagation();
                     setProjectToDelete(p.id);
                   }}
-                  className="text-zinc-400 hover:text-rose-500 transition-colors p-1 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+                  className="text-zinc-400 hover:text-rose-500 p-1 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
@@ -284,7 +326,17 @@ export default function Sidebar({
   );
 
   return (
-    <aside className="w-72 lg:w-64 border-r border-zinc-200/50 dark:border-zinc-800/50 glass flex flex-col h-full shrink-0 shadow-xl lg:shadow-none">
+    <aside 
+      className={cn(
+        "border-r border-zinc-200/50 dark:border-zinc-800/50 glass flex flex-col h-full shrink-0 shadow-xl lg:shadow-none relative transition-[width] duration-75 lg:transition-none",
+        !isDesktop ? "w-72" : ""
+      )}
+      style={{ width: isDesktop ? sidebarWidth : undefined }}
+    >
+      <div 
+        onMouseDown={() => setIsResizing(true)}
+        className="absolute top-0 right-[-3px] w-1.5 h-full cursor-col-resize hover:bg-blue-500/20 active:bg-blue-500/40 transition-colors z-[60] lg:block hidden"
+      />
       <div className="p-4 flex items-center justify-between border-b border-zinc-200/50 dark:border-zinc-800/50">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 bg-blue-500 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20">

@@ -204,14 +204,6 @@ export default function Home() {
 
 	return (
 		<div className='flex h-screen bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-50 overflow-hidden relative'>
-			{/* Mobile Toggle Button */}
-			<button
-				onClick={toggleSidebar}
-				className='lg:hidden fixed bottom-6 left-6 z-[80] w-12 h-12 glass rounded-2xl flex items-center justify-center shadow-lg active:scale-95 transition-all text-zinc-600 dark:text-zinc-400'
-				aria-label='Toggle Sidebar'>
-				<LayoutDashboard className='w-6 h-6' />
-			</button>
-
 			{/* Overlay for mobile sidebar */}
 			{isSidebarOpen && (
 				<div
@@ -247,7 +239,7 @@ export default function Home() {
 			<main className='flex-1 overflow-hidden flex flex-col bg-white dark:bg-zinc-950 min-w-0 min-h-0'>
 				{activeProjectId ?
 					<div className='flex-1 p-4 lg:p-8 min-w-0 min-h-0 relative overflow-hidden'>
-						<KanbanBoard projectId={activeProjectId} />
+						<KanbanBoard projectId={activeProjectId} onToggleSidebar={toggleSidebar} />
 					</div>
 				:	<div className='flex-1 flex flex-col items-center justify-center p-8 text-center max-w-md mx-auto'>
 						<div className='w-16 h-16 bg-zinc-100 dark:bg-zinc-900 rounded-2xl flex items-center justify-center mb-6 border border-zinc-200 dark:border-zinc-800'>

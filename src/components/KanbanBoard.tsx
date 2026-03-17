@@ -20,7 +20,7 @@ import TaskCard, {Task} from './TaskCard';
 import {supabase} from '@/lib/supabase';
 import {Tooltip} from './ui/Tooltip';
 import {useToast} from './ui/Toast';
-import {Columns, Lock, Maximize, Plus, Share2, Users, ZoomIn, ZoomOut} from 'lucide-react';
+import {Plus, ZoomIn, Maximize, Columns, Share2, Users, LayoutDashboard, Lock, ZoomOut} from 'lucide-react';
 import ShareModal from './modals/ShareModal';
 import AddTaskModal from './modals/AddTaskModal';
 import AddColumnModal from './modals/AddColumnModal';
@@ -29,6 +29,7 @@ import { throttle } from '@/lib/utils';
 import Image from 'next/image';
 interface KanbanBoardProps {
 	projectId: string;
+	onToggleSidebar: () => void;
 }
 
 // Separate component so it can use useControls() inside TransformWrapper context
@@ -74,7 +75,7 @@ function ZoomControls() {
 	);
 }
 
-export default function KanbanBoard({projectId}: KanbanBoardProps) {
+export default function KanbanBoard({projectId, onToggleSidebar}: KanbanBoardProps) {
 	const {showToast} = useToast();
 	const [projectName, setProjectName] = useState('');
 	const [columns, setColumns] = useState<ColumnType[]>([]);
@@ -919,7 +920,17 @@ export default function KanbanBoard({projectId}: KanbanBoardProps) {
 				<div className='flex flex-col sm:flex-row items-start sm:items-center justify-between px-4 lg:px-6 py-4 sm:py-3 border-b border-zinc-200/50 dark:border-zinc-800/50 glass z-[60] gap-4 sm:gap-2'>
 					<div className='flex items-center gap-3 lg:gap-4 overflow-hidden w-full sm:w-auto'>
 						<div className='flex items-center gap-2 overflow-hidden'>
-							<div className='w-8 h-8 rounded-lg bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center shrink-0'>
+							<button
+								onClick={(e) => {
+									e.stopPropagation();
+									onToggleSidebar();
+								}}
+								className="lg:hidden w-8 h-8 rounded-lg bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center shrink-0 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors"
+								aria-label="Toggle Sidebar"
+							>
+								<LayoutDashboard className="w-4 h-4 text-zinc-600 dark:text-zinc-400" />
+							</button>
+							<div className='hidden lg:flex w-8 h-8 rounded-lg bg-zinc-100 dark:bg-zinc-800 items-center justify-center shrink-0'>
 								<Columns className='w-4 h-4 text-zinc-500' />
 							</div>
 							<h2 className='text-sm font-bold text-zinc-900 dark:text-zinc-100 truncate tracking-tight'>
