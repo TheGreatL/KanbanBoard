@@ -12,14 +12,16 @@ export async function GET(request: Request) {
 		const supabase = await createClient();
 		const {error} = await supabase.auth.exchangeCodeForSession(code);
 		if (!error) {
-			const forwardedHost = request.headers.get('x-forwarded-host'); // original origin before load balancer
+			const forwardedHost = request.headers.get('x-forwarded-host');
+			const forwardedProto = request.headers.get('x-forwarded-proto') || 'https';
 			const isLocalEnv = process.env.NODE_ENV === 'development';
-			if (isLocalEnv) {
-				// we can be sure that there is no proxy after localhost in dev mode
+			
+			if (isLocalEnv && !forwardedHost) {
 				return NextResponse.redirect(`${origin}${next}`);
 			} else if (forwardedHost) {
-				return NextResponse.redirect(`https://${forwardedHost}${next}`);
+				return NextResponse.redirect(`${forwardedProto}://${forwardedHost}${next}`);
 			} else {
+				// Fallback to the origin from the request URL
 				return NextResponse.redirect(`${origin}${next}`);
 			}
 		}

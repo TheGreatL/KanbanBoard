@@ -13,9 +13,9 @@ function VerifyResetContent() {
   
   const handleConfirm = () => {
     setLoading(true);
-    // Redirect to the callback route with the code
-    // This ensures a user interaction (click) happens before the one-time code is consumed
-    router.push(`/auth/callback?code=${code}&next=/auth/update-password`);
+    // Use window.location.href to force a full page load.
+    // This ensures the server-side callback route is hit directly and cookies are set properly.
+    window.location.href = `/auth/callback?code=${code}&next=/auth/update-password`;
   };
 
   if (!code) {
