@@ -23,8 +23,23 @@ export async function GET(request: Request) {
 				return NextResponse.redirect(`${origin}${next}`);
 			}
 		}
+
+		// Handle error during code exchange
+		return NextResponse.redirect(
+			`${origin}/auth/auth-code-error?error=${error.name}&error_description=${encodeURIComponent(error.message)}`,
+		);
 	}
 
-	// return the user to an error page with instructions
-	return NextResponse.redirect(`${origin}/auth/auth-code-error`);
+	// Handle case where Supabase redirects back with errors in the URL (e.g. access_denied, otp_expired)
+	const error = searchParams.get('error');
+	const errorDescription = searchParams.get('error_description');
+
+	if (error) {
+		return NextResponse.redirect(
+			`${origin}/auth/auth-code-error?error=${error}&error_description=${encodeURIComponent(errorDescription || '')}`,
+		);
+	}
+
+	// Default fallback for missing code
+	return NextResponse.redirect(`${origin}/auth/auth-code-error?error=invalid_request&error_description=No+authentication+code+provided`);
 }
