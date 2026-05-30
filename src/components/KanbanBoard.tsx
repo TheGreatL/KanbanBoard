@@ -917,14 +917,11 @@ export default function KanbanBoard({projectId, onToggleSidebar}: KanbanBoardPro
 									e.stopPropagation();
 									onToggleSidebar();
 								}}
-								className="lg:hidden"
 								aria-label="Toggle Sidebar"
 							>
-								<IconLayoutDashboard size={18} />
+								<IconLayoutDashboard size={18} className="lg:hidden" />
+								<IconColumns size={18} className="hidden lg:block text-zinc-500" />
 							</ActionIcon>
-							<div className='hidden lg:flex w-8 h-8 rounded-lg bg-zinc-100 dark:bg-zinc-800 items-center justify-center shrink-0'>
-								<IconColumns size={16} className='text-zinc-500' />
-							</div>
 							<h2 className='text-sm font-bold text-zinc-900 dark:text-zinc-100 truncate '>
 								{projectName || 'Board Canvas'}
 							</h2>

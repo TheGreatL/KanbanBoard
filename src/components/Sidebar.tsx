@@ -345,7 +345,8 @@ export default function Sidebar({
           <h1 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">Kanban</h1>
         </div>
         {onClose && (
-          <ActionIcon
+         <div className="lg:hidden block">
+            <ActionIcon
             variant="subtle"
             color="gray"
             className="lg:hidden"
@@ -353,6 +354,7 @@ export default function Sidebar({
           >
             <IconX size={20} />
           </ActionIcon>
+             </div>
         )}
       </div>
 

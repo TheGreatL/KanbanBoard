@@ -178,9 +178,18 @@ export default function Home() {
 		await supabase.auth.signOut();
 	};
 
-	const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+	const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+	const [isDesktopSidebarClosed, setIsDesktopSidebarClosed] = useState(false);
 
-	const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
+	const toggleSidebar = () => {
+		if (typeof window !== 'undefined') {
+			if (window.innerWidth < 1024) {
+				setIsMobileSidebarOpen(!isMobileSidebarOpen);
+			} else {
+				setIsDesktopSidebarClosed(!isDesktopSidebarClosed);
+			}
+		}
+	};
 
 	if (loading) {
 		return (
@@ -204,17 +213,18 @@ export default function Home() {
 	return (
 		<div className='flex h-screen bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-50 overflow-hidden relative'>
 			{/* Overlay for mobile sidebar */}
-			{isSidebarOpen && (
+			{isMobileSidebarOpen && (
 				<div
 					className='fixed inset-0 bg-black/20 backdrop-blur-[2px] z-[70] lg:hidden animate-in fade-in duration-200'
-					onClick={() => setIsSidebarOpen(false)}
+					onClick={() => setIsMobileSidebarOpen(false)}
 				/>
 			)}
 
 			<div
 				className={cn(
-					'fixed inset-y-0 left-0 z-[75] lg:relative lg:block transform transition-transform duration-300 ease-out lg:translate-x-0',
-					isSidebarOpen ? 'translate-x-0' : '-translate-x-full',
+					'fixed inset-y-0 left-0 z-[75] lg:relative lg:block transition-all duration-300 ease-out',
+					isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
+					isDesktopSidebarClosed ? 'lg:ml-[-18rem]' : 'lg:ml-0'
 				)}>
 				<Sidebar
 					projects={projects}
@@ -222,7 +232,7 @@ export default function Home() {
 					isLoading={loadingProjects}
 					onSelectProject={(id) => {
 						setActiveProjectId(id);
-						setIsSidebarOpen(false);
+						setIsMobileSidebarOpen(false);
 					}}
 					onCreateProject={createProject}
 					onArchiveProject={archiveProject}
@@ -231,7 +241,7 @@ export default function Home() {
 					onUpdateProject={updateProject}
 					onLogout={handleLogout}
 					currentUserId={currentUserId}
-					onClose={() => setIsSidebarOpen(false)}
+					onClose={() => setIsMobileSidebarOpen(false)}
 				/>
 			</div>
 

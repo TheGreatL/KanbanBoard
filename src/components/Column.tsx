@@ -2,13 +2,12 @@
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-// import { Plus, Trash2, X, GripVertical, LayoutList, AlignLeft, Check, Archive, ChevronRight } from "lucide-react";
+import { IconPlus, IconTrash, IconX, IconGripVertical, IconLayoutList, IconAlignLeft, IconCheck, IconArchive, IconChevronRight } from "@tabler/icons-react";
+import { Tooltip, Modal, Button, Text, Group, ActionIcon, TextInput, Textarea, Stack, ColorSwatch } from '@mantine/core';
 import TaskCard, { Task } from "./TaskCard";
 import { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
-import { Tooltip } from "./ui/Tooltip";
-import { IconGripVertical, IconLayoutList, IconPlus,  IconTrash, IconX } from "@tabler/icons-react";
 import { CheckIcon } from "@mantine/core";
 
 export interface ColumnType {
@@ -188,7 +187,7 @@ export default function Column({
         <div className="no-pan p-4 flex items-center gap-2 border-b border-zinc-200/50 dark:border-zinc-800/50 relative group/header">
           {/* Drag handle */}
           {!column.is_archive_pool && isEditable && (
-            <Tooltip text="Drag to reorder column">
+            <Tooltip label="Drag to reorder column">
               <div
                 {...attributes}
                 {...listeners}
@@ -201,7 +200,7 @@ export default function Column({
 
           {/* Color dot */}
           <div className="relative shrink-0">
-            <Tooltip text={isEditable && !column.is_archive_pool ? "Edit column" : ""} disabled={!isEditable || column.is_archive_pool}>
+            <Tooltip label={isEditable && !column.is_archive_pool ? "Edit column" : ""} disabled={!isEditable || column.is_archive_pool}>
               <button
                 disabled={!isEditable || column.is_archive_pool}
                 onPointerDown={(e) => {
@@ -224,7 +223,7 @@ export default function Column({
 
           {/* Title and Description */}
           <div className="flex-1 min-w-0 flex flex-col justify-center">
-            <Tooltip text={column.is_archive_pool || !isEditable ? "" : "Click to edit column"} disabled={column.is_archive_pool || !isEditable}>
+            <Tooltip label={column.is_archive_pool || !isEditable ? "" : "Click to edit column"} disabled={column.is_archive_pool || !isEditable}>
               <div
                 className={cn(
                   "flex flex-col truncate rounded px-1.5 py-0.5 -ml-1.5 transition-colors",
@@ -259,7 +258,7 @@ export default function Column({
           </span>
 
           {!column.is_archive_pool && isEditable && (
-              <Tooltip text="Archive column">
+              <Tooltip label="Archive column">
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -378,7 +377,7 @@ export default function Column({
                 <label className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Color</label>
                 <div className="flex flex-wrap gap-2 mt-1">
                   {AVAILABLE_COLORS.map((color) => (
-                    <Tooltip key={color} text={color}>
+                    <Tooltip key={color} label={color}>
                       <button
                         type="button"
                         onClick={() => setEditColor(color)}
@@ -411,58 +410,16 @@ export default function Column({
         document.body
       )}
 
-      {/* Archive Column Modal — portalled to document.body */}
-      {isDeleteDialogOpen && typeof window !== "undefined" && createPortal(
-        <div
-          className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 p-4"
-          onPointerDown={(e) => e.stopPropagation()}
-        >
-          <div
-            className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl w-full max-w-sm flex flex-col max-h-[calc(100dvh-2rem)] overflow-y-auto gap-4 p-6 cursor-auto"
-            onClick={(e) => e.stopPropagation()}
-            onKeyDown={(e) => {
-              if (e.key === "Escape") setIsDeleteDialogOpen(false);
-            }}
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <IconTrash className="w-4 h-4 text-amber-400" />
-                <h2 className="font-semibold text-zinc-900 dark:text-zinc-100 text-base">Archive Column</h2>
-              </div>
-              <button
-                onClick={() => setIsDeleteDialogOpen(false)}
-                className="p-1.5 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors cursor-pointer"
-              >
-                <IconX className="w-4 h-4" />
-              </button>
-            </div>
-
-            <p className="text-sm text-zinc-600 dark:text-zinc-400">
-              Are you sure you want to archive <span className="font-medium text-zinc-900 dark:text-zinc-100">&ldquo;{column.title}&rdquo;</span>? You can restore it later if needed.
-            </p>
-
-            <div className="flex items-center justify-end gap-2 pt-1">
-              <button
-                onClick={() => setIsDeleteDialogOpen(false)}
-                className="px-4 py-2 text-xs text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors font-medium cursor-pointer rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-900"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => {
-                  archiveColumn(column.id);
-                  setIsDeleteDialogOpen(false);
-                }}
-                className="flex items-center gap-1.5 px-5 py-2 text-xs bg-amber-500 text-white font-bold rounded-lg hover:bg-amber-600 transition-colors cursor-pointer"
-              >
-                <CheckIcon className="w-3.5 h-3.5" />
-                Confirm Archive
-              </button>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
+      {/* Archive Column Modal */}
+      <Modal opened={isDeleteDialogOpen} onClose={() => setIsDeleteDialogOpen(false)} title={<Group gap="xs"><IconTrash size={18} className="text-amber-500"/><Text fw={600}>Archive Column</Text></Group>} centered>
+        <Text size="sm" c="dimmed" mb="lg">
+          Are you sure you want to archive <Text span fw={600} c="var(--mantine-color-text)">&ldquo;{column.title}&rdquo;</Text>? You can restore it later if needed.
+        </Text>
+        <Group justify="flex-end">
+          <Button variant="subtle" color="gray" onClick={() => setIsDeleteDialogOpen(false)}>Cancel</Button>
+          <Button color="orange" leftSection={<IconCheck size={16} />} onClick={() => { archiveColumn(column.id); setIsDeleteDialogOpen(false); }}>Confirm Archive</Button>
+        </Group>
+      </Modal>
     </>
   );
 }

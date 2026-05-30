@@ -3,9 +3,9 @@
 import {useEffect, useState} from 'react';
 import {useRouter} from 'next/navigation';
 import {supabase} from '@/lib/supabase';
-import { IconArrowLeft, IconCamera, IconDeviceFloppy, IconCheck, IconLogout, IconAlertCircle } from '@tabler/icons-react';
+import { IconArrowLeft, IconCamera, IconDeviceFloppy, IconCheck, IconLogout, IconAlertCircle, IconLock } from '@tabler/icons-react';
 import {useToast} from '@/components/ui/Toast';
-import { Box, Flex, Text, Button, Avatar, ActionIcon, FileButton, Paper, TextInput, Alert, Center, Group, Skeleton, Container } from '@mantine/core';
+import { Box, Flex, Text, Button, Avatar, ActionIcon, FileButton, Paper, TextInput, Alert, Center, Group, Skeleton, Container, PasswordInput } from '@mantine/core';
 
 const DEFAULT_AVATAR = 'https://oqhjxepxjzkfunemjvqp.supabase.co/storage/v1/object/public/avatars/user-default.png';
 
@@ -26,6 +26,12 @@ export default function ProfilePage() {
 	const [previewUrl, setPreviewUrl] = useState('');
 	const [uploading, setUploading] = useState(false);
 	const [profileError, setProfileError] = useState<string | null>(null);
+
+	const [password, setPassword] = useState('');
+	const [confirmPassword, setConfirmPassword] = useState('');
+	const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
+	const [passwordError, setPasswordError] = useState<string | null>(null);
+	const [passwordSuccess, setPasswordSuccess] = useState(false);
 
 	useEffect(() => {
 		const fetchProfile = async () => {
@@ -94,6 +100,44 @@ export default function ProfilePage() {
 			setProfileError(message);
 		} finally {
 			setIsSaving(false);
+		}
+	};
+
+	const handleUpdatePassword = async (e: React.FormEvent) => {
+		e.preventDefault();
+		if (password !== confirmPassword) {
+			setPasswordError('Passwords do not match');
+			return;
+		}
+		if (password.length < 6) {
+			setPasswordError('Password must be at least 6 characters');
+			return;
+		}
+
+		setIsUpdatingPassword(true);
+		setPasswordError(null);
+
+		try {
+			const {error} = await supabase.auth.updateUser({
+				password: password,
+			});
+
+			if (error) throw error;
+
+			setPasswordSuccess(true);
+			setPassword('');
+			setConfirmPassword('');
+			setTimeout(() => setPasswordSuccess(false), 2000);
+			showToast({
+				type: 'success',
+				title: 'Password Updated',
+				message: 'Your password has been successfully changed.',
+			});
+		} catch (err: unknown) {
+			const error = err as {message?: string};
+			setPasswordError(error?.message || 'Could not update password.');
+		} finally {
+			setIsUpdatingPassword(false);
 		}
 	};
 
@@ -247,6 +291,67 @@ export default function ProfilePage() {
 								leftSection={saved ? <IconCheck size={16} /> : <IconDeviceFloppy size={16} />}
 							>
 								{saved ? 'Saved!' : 'Save Changes'}
+							</Button>
+						</Group>
+					</Box>
+				</Paper>
+
+				<Paper withBorder radius="md" component="form" onSubmit={handleUpdatePassword} mb="md">
+					<Box px="md" py="xs" style={{ borderBottom: '1px solid var(--mantine-color-default-border)' }}>
+						<Text size="xs" fw={700} c="dimmed" tt="uppercase">Security</Text>
+					</Box>
+
+					{passwordError && (
+						<Alert variant="light" color="red" title="Error" icon={<IconAlertCircle size={16} />} radius={0} style={{ borderBottom: '1px solid var(--mantine-color-red-light)' }}>
+							{passwordError}
+						</Alert>
+					)}
+
+					<Box px="md" py="md">
+						<Group mb="md" align="flex-start" wrap="nowrap">
+							<Text size="sm" fw={500} c="dimmed" w={120} style={{ flexShrink: 0 }} mt={8}>New Password</Text>
+							<PasswordInput
+								value={password}
+								onChange={(e) => {
+									setPassword(e.currentTarget.value);
+									setPasswordError(null);
+								}}
+								placeholder="••••••••"
+								style={{ flexGrow: 1 }}
+								radius="sm"
+								minLength={6}
+								required
+							/>
+						</Group>
+
+						<Group align="flex-start" wrap="nowrap">
+							<Text size="sm" fw={500} c="dimmed" w={120} style={{ flexShrink: 0 }} mt={8}>Confirm Password</Text>
+							<PasswordInput
+								value={confirmPassword}
+								onChange={(e) => {
+									setConfirmPassword(e.currentTarget.value);
+									setPasswordError(null);
+								}}
+								placeholder="••••••••"
+								style={{ flexGrow: 1 }}
+								radius="sm"
+								minLength={6}
+								required
+							/>
+						</Group>
+					</Box>
+
+					<Box px="md" py="sm" style={{ borderTop: '1px solid var(--mantine-color-default-border)' }}>
+						<Group justify="flex-end">
+							<Button
+								type="submit"
+								color="dark"
+								radius="sm"
+								disabled={isUpdatingPassword || !password || !confirmPassword}
+								loading={isUpdatingPassword}
+								leftSection={passwordSuccess ? <IconCheck size={16} /> : <IconLock size={16} />}
+							>
+								{passwordSuccess ? 'Updated!' : 'Update Password'}
 							</Button>
 						</Group>
 					</Box>
