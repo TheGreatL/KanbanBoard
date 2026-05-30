@@ -93,17 +93,13 @@ export default function AddColumnModal({
             <Group gap="sm">
               {availableColors.map((color) => (
                 <Tooltip key={color} label={color} position="top" withArrow>
-                  <ColorSwatch
-                    component="button"
+                  <button
                     type="button"
-                    color={`var(--mantine-color-${color}-5)`}
                     onClick={() => setNewColumnColor(color)}
-                    style={{ color: '#fff', cursor: 'pointer' }}
-                    radius="xl"
-                    className={newColumnColor === color ? 'ring-2 ring-offset-2 ring-zinc-400 dark:ring-zinc-600 dark:ring-offset-zinc-950 shadow-sm scale-110' : 'hover:scale-110 transition-transform'}
+                    className={`w-6 h-6 flex items-center justify-center rounded-full ${dotColorMap[color]} hover:scale-110 transition-transform ${newColumnColor === color ? 'ring-2 ring-offset-2 ring-zinc-400 dark:ring-zinc-600 dark:ring-offset-zinc-950 shadow-sm scale-110' : ''}`}
                   >
-                    {newColumnColor === color && <IconCheck size={12} />}
-                  </ColorSwatch>
+                    {newColumnColor === color && <IconCheck size={14} className="text-white drop-shadow-sm" />}
+                  </button>
                 </Tooltip>
               ))}
             </Group>

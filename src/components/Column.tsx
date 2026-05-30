@@ -113,9 +113,7 @@ export default function Column({
   remoteDragging = [],
   isEditable = true,
 }: ColumnProps) {
-  const [showColorPicker, setShowColorPicker] = useState(false);
-  const colorPickerRef = useRef<HTMLDivElement>(null);
-  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editTitle, setEditTitle] = useState(column.title);
   const [editDescription, setEditDescription] = useState(column.description || "");
   const [editColor, setEditColor] = useState(column.color);
@@ -132,35 +130,11 @@ export default function Column({
     transform: CSS.Transform.toString(transform),
   };
 
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (colorPickerRef.current && !colorPickerRef.current.contains(event.target as Node)) {
-        setShowColorPicker(false);
-      }
-    }
-    if (showColorPicker) {
-      document.addEventListener("mousedown", handleClickOutside);
-    }
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [showColorPicker]);
-
-  const handleColorSelect = async (color: string) => {
-    setShowColorPicker(false);
-    if (updateColumnColor && color !== column.color) {
-      await updateColumnColor(column.id, color);
-    }
-  };
-
-  const handleTitleSubmit = async (e?: React.FormEvent) => {
+  const handleEditSubmit = async (e?: React.FormEvent) => {
     e?.preventDefault();
     const trimmedTitle = editTitle.trim();
     if (!trimmedTitle) {
-      setEditTitle(column.title);
-      setEditDescription(column.description || "");
-      setEditColor(column.color);
-      setIsEditingTitle(false);
+      setIsEditDialogOpen(false);
       return;
     }
     
@@ -179,7 +153,7 @@ export default function Column({
        await updateColumnTitle(column.id, trimmedTitle);
     }
 
-    setIsEditingTitle(false);
+    setIsEditDialogOpen(false);
   };
 
   if (isDragging && !isOverlay) {
@@ -225,122 +199,56 @@ export default function Column({
             </Tooltip>
           )}
 
-          {/* Color dot + picker */}
-          <div className="relative shrink-0" ref={colorPickerRef} onPointerDown={(e) => e.stopPropagation()}>
-            <Tooltip text={isEditable ? "Change column color" : "Column color"} disabled={!isEditable && !column.color}>
+          {/* Color dot */}
+          <div className="relative shrink-0">
+            <Tooltip text={isEditable && !column.is_archive_pool ? "Edit column" : ""} disabled={!isEditable || column.is_archive_pool}>
               <button
-                disabled={!isEditable}
+                disabled={!isEditable || column.is_archive_pool}
                 onPointerDown={(e) => {
-                  if (!isEditable) return;
-                  e.preventDefault();
+                  if (!isEditable || column.is_archive_pool) return;
                   e.stopPropagation();
-                  setShowColorPicker((prev) => !prev);
+                  setEditTitle(column.title);
+                  setEditDescription(column.description || "");
+                  setEditColor(column.color);
+                  setIsEditDialogOpen(true);
                 }}
-                onMouseDown={(e) => e.preventDefault()}
-                onClick={(e) => e.stopPropagation()}
                 className={cn(
                   "p-1 -ml-1 border-none rounded-md transition-colors flex items-center justify-center opacity-80 outline-none",
-                  isEditable ? "hover:bg-zinc-200 dark:hover:bg-zinc-800 cursor-pointer hover:opacity-100" : "cursor-default"
+                  isEditable && !column.is_archive_pool ? "hover:bg-zinc-200 dark:hover:bg-zinc-800 cursor-pointer hover:opacity-100" : "cursor-default"
                 )}
               >
                 <div className={cn("w-3 h-3 rounded-full shadow-sm", dotColorClass)} />
               </button>
             </Tooltip>
-
-            {showColorPicker && (
-              <div
-                className="absolute top-full left-0 mt-1 p-2 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-lg z-50 grid grid-cols-4 gap-2 cursor-auto w-28"
-                onClick={(e) => e.stopPropagation()}
-                onPointerDown={(e) => e.stopPropagation()}
-              >
-                {AVAILABLE_COLORS.map((color) => (
-                    <Tooltip key={color} text={color}>
-                      <button
-                        onPointerDown={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          handleColorSelect(color);
-                        }}
-                        onClick={(e) => e.stopPropagation()}
-                        className={`w-4 h-4 rounded-full ${DOT_COLOR_MAP[color]} hover:scale-110 transition-transform ${column.color === color ? 'ring-2 ring-offset-1 ring-zinc-400 dark:ring-zinc-600 dark:ring-offset-zinc-950' : ''}`}
-                      />
-                    </Tooltip>
-                ))}
-              </div>
-            )}
           </div>
 
           {/* Title and Description */}
           <div className="flex-1 min-w-0 flex flex-col justify-center">
-            {isEditingTitle && !column.is_archive_pool && isEditable ? (
-              <form onSubmit={handleTitleSubmit} className="flex-1 min-w-0 flex flex-col gap-1">
-                <input
-                  autoFocus
-                  value={editTitle}
-                  onChange={(e) => setEditTitle(e.target.value)}
-                  onPointerDown={(e) => e.stopPropagation()}
-                  onClick={(e) => e.stopPropagation()}
-                  placeholder="Column Title"
-                  className="w-full text-sm font-semibold text-zinc-900 dark:text-zinc-100 bg-white dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 rounded px-1.5 py-0.5 outline-none focus:ring-1 focus:ring-zinc-400 dark:focus:ring-zinc-600 transition-all placeholder:font-normal"
-                  onKeyDown={(e) => {
-                    e.stopPropagation();
-                    if (e.key === "Escape") {
-                      setEditTitle(column.title);
-                      setEditDescription(column.description || "");
-                      setIsEditingTitle(false);
-                    }
-                  }}
-                />
-                <textarea
-                  value={editDescription}
-                  onChange={(e) => setEditDescription(e.target.value)}
-                  onPointerDown={(e) => e.stopPropagation()}
-                  onClick={(e) => e.stopPropagation()}
-                  onBlur={() => handleTitleSubmit()}
-                  placeholder="Add a description (optional)..."
-                  rows={2}
-                  className="w-full text-xs text-zinc-600 dark:text-zinc-400 bg-white dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 rounded px-1.5 py-1 outline-none focus:ring-1 focus:ring-zinc-400 dark:focus:ring-zinc-600 transition-all resize-none"
-                  onKeyDown={(e) => {
-                    e.stopPropagation();
-                    if (e.key === "Escape") {
-                      setEditTitle(column.title);
-                      setEditDescription(column.description || "");
-                      setIsEditingTitle(false);
-                    }
-                    if (e.key === "Enter" && !e.shiftKey) {
-                        e.preventDefault();
-                        handleTitleSubmit();
-                    }
-                  }}
-                />
-              </form>
-            ) : (
-              <Tooltip text={column.is_archive_pool || !isEditable ? "" : "Click to edit name & description"} disabled={column.is_archive_pool || !isEditable}>
-                <div
-                  className={cn(
-                    "flex flex-col truncate rounded px-1.5 py-0.5 -ml-1.5 transition-colors",
-                    !column.is_archive_pool && isEditable && "cursor-pointer hover:bg-zinc-200/50 dark:hover:bg-zinc-800/50"
-                  )}
-                  onClick={(e) => {
-                    if (column.is_archive_pool || !isEditable) return;
-                    e.stopPropagation();
-                    setIsEditingTitle(true);
-                    setEditTitle(column.title);
-                    setEditDescription(column.description || "");
-                  }}
-                  onPointerDown={(e) => e.stopPropagation()}
-                >
-                  <h3 className="font-semibold text-zinc-900 dark:text-zinc-100 text-sm truncate">
-                    {column.title}
-                  </h3>
-                  {column.description && !isEditingTitle && (
-                    <p className="text-xs text-zinc-500 dark:text-zinc-400 truncate mt-0.5">
-                        {column.description}
-                    </p>
-                  )}
-                </div>
-              </Tooltip>
-            )}
+            <Tooltip text={column.is_archive_pool || !isEditable ? "" : "Click to edit column"} disabled={column.is_archive_pool || !isEditable}>
+              <div
+                className={cn(
+                  "flex flex-col truncate rounded px-1.5 py-0.5 -ml-1.5 transition-colors",
+                  !column.is_archive_pool && isEditable && "cursor-pointer hover:bg-zinc-200/50 dark:hover:bg-zinc-800/50"
+                )}
+                onPointerDown={(e) => {
+                  if (column.is_archive_pool || !isEditable) return;
+                  e.stopPropagation();
+                  setEditTitle(column.title);
+                  setEditDescription(column.description || "");
+                  setEditColor(column.color);
+                  setIsEditDialogOpen(true);
+                }}
+              >
+                <h3 className="font-semibold text-zinc-900 dark:text-zinc-100 text-sm truncate">
+                  {column.title}
+                </h3>
+                {column.description && (
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400 truncate mt-0.5">
+                      {column.description}
+                  </p>
+                )}
+              </div>
+            </Tooltip>
           </div>
 
           <span className={cn(
@@ -422,6 +330,86 @@ export default function Column({
           )}
         </div>
       </div>
+
+      {/* Edit Column Modal — portalled to document.body */}
+      {isEditDialogOpen && typeof window !== "undefined" && createPortal(
+        <div
+          className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 p-4"
+          onPointerDown={(e) => e.stopPropagation()}
+        >
+          <div
+            className="bg-white dark:bg-zinc-950 border border-zinc-200/50 dark:border-zinc-800/50 rounded-2xl shadow-xl w-full max-w-sm flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200"
+            onPointerDown={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between p-4 border-b border-zinc-100 dark:border-zinc-900">
+              <h2 className="font-semibold text-zinc-900 dark:text-zinc-100 text-base">Edit Column</h2>
+              <button
+                onClick={() => setIsEditDialogOpen(false)}
+                className="p-1.5 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors cursor-pointer"
+              >
+                <IconX className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleEditSubmit} className="flex flex-col p-4 gap-4">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Title</label>
+                <input
+                  autoFocus
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                  placeholder="Column Title"
+                  className="w-full text-sm font-semibold text-zinc-900 dark:text-zinc-100 bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-300 dark:border-zinc-700 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-zinc-400 dark:focus:ring-zinc-600 transition-all placeholder:font-normal"
+                />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Description</label>
+                <textarea
+                  value={editDescription}
+                  onChange={(e) => setEditDescription(e.target.value)}
+                  placeholder="Add a description (optional)..."
+                  rows={2}
+                  className="w-full text-sm text-zinc-700 dark:text-zinc-300 bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-300 dark:border-zinc-700 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-zinc-400 dark:focus:ring-zinc-600 transition-all resize-none"
+                />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Color</label>
+                <div className="flex flex-wrap gap-2 mt-1">
+                  {AVAILABLE_COLORS.map((color) => (
+                    <Tooltip key={color} text={color}>
+                      <button
+                        type="button"
+                        onClick={() => setEditColor(color)}
+                        className={`w-6 h-6 rounded-full ${DOT_COLOR_MAP[color]} hover:scale-110 transition-transform ${editColor === color ? 'ring-2 ring-offset-2 ring-zinc-400 dark:ring-zinc-600 dark:ring-offset-zinc-950' : ''}`}
+                      />
+                    </Tooltip>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 mt-2 pt-4 border-t border-zinc-100 dark:border-zinc-900">
+                <button
+                  type="button"
+                  onClick={() => setIsEditDialogOpen(false)}
+                  className="px-4 py-2 text-sm text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 font-medium transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={!editTitle.trim()}
+                  className="px-4 py-2 text-sm bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 font-semibold rounded-lg hover:bg-zinc-800 dark:hover:bg-zinc-100 disabled:opacity-50 transition-colors cursor-pointer"
+                >
+                  Save Changes
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>,
+        document.body
+      )}
 
       {/* Archive Column Modal — portalled to document.body */}
       {isDeleteDialogOpen && typeof window !== "undefined" && createPortal(
