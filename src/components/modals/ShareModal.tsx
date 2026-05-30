@@ -1,11 +1,9 @@
 'use client';
 
-import {useState, useRef, useEffect, useCallback, useLayoutEffect} from 'react';
-import {createPortal} from 'react-dom';
+import {useState, useEffect} from 'react';
 import {supabase} from '@/lib/supabase';
-import {Tooltip} from '../ui/Tooltip';
-import {cn} from '@/lib/utils';
-import {Share2, X, Search, Loader2, UserPlus, UserMinus, ChevronDown, Check} from 'lucide-react';
+import {IconShare, IconSearch, IconUserPlus, IconUserMinus, IconChevronDown, IconCheck} from '@tabler/icons-react';
+import {Modal, TextInput, Group, Stack, Text, Menu, Avatar, ActionIcon, Loader, Badge, ScrollArea, Box, Button, UnstyledButton} from '@mantine/core';
 
 interface ShareModalProps {
 	isOpen: boolean;
@@ -19,91 +17,31 @@ const ROLES = [
 	{value: 'editor', label: 'Editor', description: 'Can edit tasks'},
 ];
 
-function RoleDropdown({value, onChange, align = 'left'}: {value: string; onChange: (v: string) => void; align?: 'left' | 'right'}) {
-	const [open, setOpen] = useState(false);
-	const [coords, setCoords] = useState<{top: number; left: number} | null>(null);
-	const ref = useRef<HTMLDivElement>(null);
-	const menuRef = useRef<HTMLDivElement>(null);
-
-	const updateCoords = useCallback(() => {
-		if (ref.current) {
-			const rect = ref.current.getBoundingClientRect();
-			setCoords({
-				top: rect.bottom + window.scrollY + 4,
-				left: align === 'right' ? rect.right + window.scrollX - 160 : rect.left + window.scrollX,
-			});
-		}
-	}, [align]);
-
-	useLayoutEffect(() => {
-		if (open) {
-			updateCoords();
-			const handler = (e: MouseEvent) => {
-				if (ref.current && !ref.current.contains(e.target as Node) && menuRef.current && !menuRef.current.contains(e.target as Node)) {
-					setOpen(false);
-				}
-			};
-			document.addEventListener('mousedown', handler);
-			window.addEventListener('scroll', updateCoords, true);
-			window.addEventListener('resize', updateCoords);
-
-			return () => {
-				document.removeEventListener('mousedown', handler);
-				window.removeEventListener('scroll', updateCoords, true);
-				window.removeEventListener('resize', updateCoords);
-			};
-		} else {
-			setCoords(null);
-		}
-	}, [open, align, updateCoords]);
-
+function RoleDropdown({value, onChange, disabled}: {value: string; onChange: (v: string) => void; disabled?: boolean}) {
 	const selected = ROLES.find((r) => r.value === value) ?? ROLES[0];
 
 	return (
-		<div
-			className='relative'
-			ref={ref}>
-			<button
-				type='button'
-				onClick={() => setOpen((v) => !v)}
-				className='flex items-center gap-1.5 px-2 py-1 text-[10px] font-semibold bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors uppercase h-7'>
-				<span className='text-zinc-600 dark:text-zinc-400'>{selected.label}</span>
-				<ChevronDown className={cn('w-3 h-3 text-zinc-400 transition-transform duration-200', open && 'rotate-180')} />
-			</button>
+		<Menu shadow="md" width={200} position="bottom-end" disabled={disabled}>
+			<Menu.Target>
+				<UnstyledButton className="flex items-center gap-1.5 px-2 py-1 text-[10px] font-semibold bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors uppercase h-7 disabled:opacity-50">
+					<span className="text-zinc-600 dark:text-zinc-400">{selected.label}</span>
+					{!disabled && <IconChevronDown size={12} className="text-zinc-400" />}
+				</UnstyledButton>
+			</Menu.Target>
 
-			{open &&
-				coords &&
-				createPortal(
-					<div
-						ref={menuRef}
-						style={{
-							position: 'fixed',
-							top: coords?.top ?? 0,
-							left: coords?.left ?? 0,
-						}}
-						className={cn(
-							'z-[500] w-40 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-100',
-						)}>
-						{ROLES.map((role) => (
-							<button
-								key={role.value}
-								type='button'
-								onClick={() => {
-									onChange(role.value);
-									setOpen(false);
-								}}
-								className='flex items-center justify-between w-full px-3 py-2.5 text-left hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors'>
-								<div>
-									<p className='text-xs font-semibold text-zinc-900 dark:text-zinc-100'>{role.label}</p>
-									<p className='text-[10px] text-zinc-400'>{role.description}</p>
-								</div>
-								{value === role.value && <Check className='w-3.5 h-3.5 text-blue-500 shrink-0' />}
-							</button>
-						))}
-					</div>,
-					document.body,
-				)}
-		</div>
+			<Menu.Dropdown>
+				{ROLES.map((role) => (
+					<Menu.Item 
+						key={role.value} 
+						onClick={() => onChange(role.value)}
+						rightSection={value === role.value ? <IconCheck size={14} className="text-blue-500" /> : null}
+					>
+						<Text size="sm" fw={600}>{role.label}</Text>
+						<Text size="xs" c="dimmed">{role.description}</Text>
+					</Menu.Item>
+				))}
+			</Menu.Dropdown>
+		</Menu>
 	);
 }
 
@@ -118,7 +56,6 @@ export default function ShareModal({isOpen, onClose, projectId, currentUserId}: 
 	const currentUserRole = projectMembers.find((m) => m.user_id === currentUserId)?.role;
 	const isOwner = currentUserRole === 'owner';
 
-	// Set of user IDs already in the project (for filtering search results)
 	const memberUserIds = new Set(projectMembers.map((m) => m.user_id));
 
 	const fetchProjectMembers = async () => {
@@ -138,7 +75,6 @@ export default function ShareModal({isOpen, onClose, projectId, currentUserId}: 
 		setIsSearching(true);
 		const {data} = await supabase.from('profiles').select('id, username, avatar_url').ilike('username', `%${query}%`).limit(10);
 
-		// Filter out users who are already members
 		const filtered = (data || []).filter((u) => !memberUserIds.has(u.id));
 		setSearchResults(filtered.slice(0, 5));
 		setIsSearching(false);
@@ -172,158 +108,101 @@ export default function ShareModal({isOpen, onClose, projectId, currentUserId}: 
 		setUpdatingMemberId(null);
 	};
 
-	if (!isOpen || typeof window === 'undefined') return null;
+	if (!isOpen && typeof window !== 'undefined') return null;
 
-	return createPortal(
-		<div
-			className='fixed inset-0 z-[200] overflow-y-auto bg-black/60'
-			onPointerDown={(e) => {
-				if (e.target === e.currentTarget) onClose();
-			}}>
-			<div className='flex min-h-full items-center justify-center p-4'>
-			<div
-				className='bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl w-full max-w-md flex flex-col max-h-[85vh] min-h-[280px]'
-				onKeyDown={(e) => {
-					if (e.key === 'Escape') onClose();
-				}}>
-				{/* ── Header (always visible) ── */}
-				<div className='flex items-center justify-between shrink-0 px-6 pt-5 pb-4'>
-					<div className='flex items-center gap-2 text-zinc-900 dark:text-zinc-100 font-semibold'>
-						<Share2 className='w-4 h-4 text-zinc-500' />
-						<h2>Share Project</h2>
-					</div>
-					<button
-						onClick={onClose}
-						title='Close modal'
-						className='p-1.5 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors cursor-pointer'>
-						<X className='w-4 h-4' />
-					</button>
-				</div>
-
-				{/* ── Scrollable body ── */}
-				<div className='flex-1 overflow-y-auto min-h-0 px-6 pb-6 flex flex-col gap-4'>
-
-				{/* Invite Section */}
-				<div className='flex flex-col gap-3'>
-					<div className='relative'>
-						<div className='absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none'>
-							<Search className='h-4 w-4 text-zinc-400' />
-						</div>
-						<input
-							type='text'
-							value={searchQuery}
-							onChange={(e) => {
-								setSearchQuery(e.target.value);
-								searchUsers(e.target.value);
-							}}
-							className='w-full pl-10 pr-3 py-2 text-sm bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-zinc-200 dark:focus:ring-zinc-800 transition-all text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 outline-none'
-							placeholder='Invite by username...'
-						/>
-					</div>
+	return (
+		<Modal 
+			opened={isOpen} 
+			onClose={onClose} 
+			title={
+				<Group gap="xs">
+					<IconShare size={18} className="text-zinc-500" />
+					<Text fw={600}>Share Project</Text>
+				</Group>
+			}
+			centered
+		>
+			<Stack gap="lg">
+				<Stack gap="xs">
+					<TextInput
+						placeholder="Invite by username..."
+						value={searchQuery}
+						onChange={(e) => {
+							setSearchQuery(e.currentTarget.value);
+							searchUsers(e.currentTarget.value);
+						}}
+						leftSection={<IconSearch size={16} />}
+						data-autofocus
+					/>
 
 					{isOwner && (
-						<div className='flex items-center gap-2 px-1'>
-							<span className='text-xs font-semibold text-zinc-500 uppercase'>Role:</span>
-							<RoleDropdown
-								value={invitingRole}
-								onChange={setInvitingRole}
-							/>
-						</div>
+						<Group gap="xs" px={4}>
+							<Text size="xs" fw={600} c="dimmed" tt="uppercase">Role:</Text>
+							<RoleDropdown value={invitingRole} onChange={setInvitingRole} />
+						</Group>
 					)}
 
-					{/* Search Results */}
-					{isSearching ?
-						<div className='flex items-center justify-center p-4'>
-							<Loader2 className='w-4 h-4 animate-spin text-zinc-400' />
-						</div>
-					: searchResults.length > 0 ?
-						<div className='bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden divide-y divide-zinc-200 dark:divide-zinc-800'>
+					{isSearching ? (
+						<Group justify="center" p="md">
+							<Loader size="sm" color="gray" />
+						</Group>
+					) : searchResults.length > 0 ? (
+						<Box className="bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden divide-y divide-zinc-200 dark:divide-zinc-800">
 							{searchResults.map((user) => (
-								<div
-									key={user.id}
-									className='flex items-center justify-between p-3'>
-									<div className='flex items-center gap-2'>
-										<div className='w-8 h-8 rounded-full bg-zinc-200 dark:bg-zinc-800 overflow-hidden flex items-center justify-center text-xs font-bold shrink-0'>
-											{user.avatar_url ?
-												<img
-													src={user.avatar_url}
-													alt={user.username}
-													className='w-full h-full object-cover'
-												/>
-											:	user.username.charAt(0).toUpperCase()}
-										</div>
-										<span className='text-sm font-medium text-zinc-900 dark:text-zinc-100'>{user.username}</span>
-									</div>
-									<button
-										onClick={() => addProjectMember(user.id)}
-										className='flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 rounded-lg hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-all cursor-pointer'>
-										<UserPlus className='w-3 h-3' />
+								<Group key={user.id} justify="space-between" p="sm">
+									<Group gap="sm">
+										<Avatar src={user.avatar_url} size="sm" radius="xl">{!user.avatar_url && user.username.charAt(0).toUpperCase()}</Avatar>
+										<Text size="sm" fw={500}>{user.username}</Text>
+									</Group>
+									<Button size="xs" variant="default" leftSection={<IconUserPlus size={14} />} onClick={() => addProjectMember(user.id)}>
 										Invite
-									</button>
-								</div>
+									</Button>
+								</Group>
 							))}
-						</div>
-					: searchQuery.trim() && !isSearching ?
-						<p className='text-xs text-zinc-400 text-center py-2'>No users found.</p>
-					:	null}
-				</div>
+						</Box>
+					) : searchQuery.trim() && !isSearching ? (
+						<Text size="xs" c="dimmed" ta="center" py="sm">No users found.</Text>
+					) : null}
+				</Stack>
 
-				{/* Members List */}
-				<div className='flex flex-col gap-2 pt-2 border-t border-zinc-200 dark:border-zinc-800'>
-					<h3 className='text-[10px] font-semibold text-zinc-400 uppercase px-1'>Current Members</h3>
-					<div className='flex flex-col gap-1 max-h-[300px] overflow-y-auto pr-1 hide-scrollbar'>
-						{projectMembers.map((member) => (
-							<div
-								key={member.id}
-								className='flex items-center justify-between p-2 hover:bg-zinc-50 dark:hover:bg-zinc-900 rounded-xl transition-colors group/member'>
-								<div className='flex items-center gap-3 min-w-0'>
-									<div className='w-8 h-8 rounded-full bg-zinc-100 dark:bg-zinc-800 overflow-hidden flex items-center justify-center text-xs font-bold shrink-0 border border-zinc-200/50 dark:border-zinc-700/50'>
-										{member.profile?.avatar_url ?
-											<img
-												src={member.profile.avatar_url}
-												alt={member.profile.username}
-												className='w-full h-full object-cover'
+				<Stack gap="xs">
+					<Text size="xs" fw={600} c="dimmed" tt="uppercase" px={4}>Current Members</Text>
+					<ScrollArea h={300} type="always" offsetScrollbars>
+						<Stack gap="xs">
+							{projectMembers.map((member) => (
+								<Group key={member.id} justify="space-between" p="xs" className="hover:bg-zinc-50 dark:hover:bg-zinc-900 rounded-xl transition-colors">
+									<Group gap="sm" wrap="nowrap" style={{ flex: 1, minWidth: 0 }}>
+										<Avatar src={member.profile?.avatar_url} size="sm" radius="xl">{!member.profile?.avatar_url && member.profile?.username?.charAt(0).toUpperCase()}</Avatar>
+										<Box style={{ flex: 1, minWidth: 0 }}>
+											<Text size="sm" fw={600} truncate>{member.profile?.username}</Text>
+											<Text fz={10} fw={500} c="dimmed">{member.user_id === currentUserId ? 'You' : 'Member'}</Text>
+										</Box>
+									</Group>
+
+									<Group gap="xs" wrap="nowrap">
+										{member.user_id !== currentUserId && member.role !== 'owner' && isOwner ? (
+											<RoleDropdown
+												value={member.role}
+												onChange={(newRole) => updateProjectMemberRole(member.id, newRole)}
+												disabled={updatingMemberId === member.id}
 											/>
-										:	member.profile?.username?.charAt(0).toUpperCase()}
-									</div>
-									<div className='flex flex-col min-w-0'>
-										<span className='text-sm font-semibold text-zinc-900 dark:text-zinc-100 truncate'>{member.profile?.username}</span>
-										<span className='text-[10px] text-zinc-400 font-medium'>{member.user_id === currentUserId ? 'You' : 'Member'}</span>
-									</div>
-								</div>
+										) : (
+											<Badge variant="light" color="gray" size="sm" radius="sm">{member.role}</Badge>
+										)}
 
-								<div className='flex items-center gap-1'>
-									{member.user_id !== currentUserId && member.role !== 'owner' && isOwner ?
-										<RoleDropdown
-											value={member.role}
-											onChange={(newRole) => updateProjectMemberRole(member.id, newRole)}
-											align='right'
-										/>
-									:	<div className='px-2 py-1 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200/50 dark:border-zinc-800/50 rounded-lg'>
-											<span className='text-[10px] font-semibold text-zinc-500 dark:text-zinc-500 uppercase '>{member.role}</span>
-										</div>
-									}
-
-									{member.user_id !== currentUserId && member.role !== 'owner' && isOwner && (
-										<Tooltip text='Remove member'>
-											<button
-												onClick={() => removeProjectMember(member.id)}
-												title='Remove member'
-												className='p-1.5 text-zinc-400 hover:text-rose-500 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors cursor-pointer'>
-												<UserMinus className='w-3.5 h-3.5' />
-											</button>
-										</Tooltip>
-									)}
-								</div>
-							</div>
-						))}
-						{projectMembers.length === 0 && <p className='text-xs text-zinc-500 italic p-2 text-center'>No other members yet.</p>}
-					</div>
-				</div>
-				</div>
-			</div>
-			</div>
-		</div>,
-		document.body,
+										{member.user_id !== currentUserId && member.role !== 'owner' && isOwner && (
+											<ActionIcon variant="subtle" color="red" size="sm" onClick={() => removeProjectMember(member.id)}>
+												<IconUserMinus size={16} />
+											</ActionIcon>
+										)}
+									</Group>
+								</Group>
+							))}
+							{projectMembers.length === 0 && <Text size="xs" c="dimmed" fs="italic" ta="center" p="sm">No other members yet.</Text>}
+						</Stack>
+					</ScrollArea>
+				</Stack>
+			</Stack>
+		</Modal>
 	);
 }

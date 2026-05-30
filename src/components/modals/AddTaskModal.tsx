@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { createPortal } from "react-dom";
-import { Plus, X, LayoutList, AlignLeft, Loader2, Check } from "lucide-react";
+import { IconPlus, IconLayoutList, IconAlignLeft, IconLoader2, IconCheck } from "@tabler/icons-react";
+import { Modal, Button, TextInput, Select, Group, Stack, Text } from '@mantine/core';
 import { ColumnType } from "../Column";
 import MarkdownEditor from "../ui/MarkdownEditor";
 
@@ -52,116 +52,78 @@ export default function AddTaskModal({
     onClose();
   };
 
-  if (!isOpen || typeof window === "undefined") return null;
+  const handleClose = () => {
+    onClose();
+    setNewTaskTitle("");
+    setNewTaskContent("");
+  };
 
-  return createPortal(
-    <div
-      className="fixed inset-0 z-200 overflow-y-auto bg-black/60"
-      onPointerDown={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
+  if (!isOpen && typeof window !== "undefined") return null;
+
+  return (
+    <Modal 
+      opened={isOpen} 
+      onClose={handleClose} 
+      title={
+        <Group gap="xs">
+          <IconPlus size={18} />
+          <Text fw={600}>Create New Task</Text>
+        </Group>
+      }
+      centered
     >
-      <div className="flex min-h-full items-center justify-center p-4">
-      <div
-        className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl w-full max-w-md flex flex-col max-h-[85vh]"
-        onKeyDown={(e) => {
-          if (e.key === "Escape") {
-            onClose();
-            setNewTaskTitle("");
-            setNewTaskContent("");
-          }
-        }}
-      >
-        {/* ── Header (always visible) ── */}
-        <div className="flex items-center justify-between shrink-0 px-6 pt-5 pb-4">
-          <div className="flex items-center gap-2 text-zinc-900 dark:text-zinc-100 font-semibold">
-            <Plus className="w-4 h-4" />
-            <h2>Create New Task</h2>
-          </div>
-          <button
-            onClick={() => {
-              onClose();
-              setNewTaskTitle("");
-              setNewTaskContent("");
-            }}
-            title="Close modal"
-            className="p-1.5 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors cursor-pointer"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
+      <form onSubmit={handleSubmit}>
+        <Stack gap="md">
+          <Select
+            label="Select Column"
+            data={columns.map((col) => ({ value: col.id, label: col.title }))}
+            value={selectedColumnId}
+            onChange={(val) => val && onSelectedColumnIdChange(val)}
+            required
+            allowDeselect={false}
+          />
 
-        {/* ── Scrollable body ── */}
-        <div className="flex-1 overflow-y-auto min-h-0 px-6 flex flex-col gap-4">
-          <div className="flex flex-col gap-1.5">
-            <label className="flex items-center gap-1.5 text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase">
-              Select Column
-            </label>
-            <select
-              value={selectedColumnId}
-              title="Select column"
-              onChange={(e) => onSelectedColumnIdChange(e.target.value)}
-              className="w-full px-3 py-2 text-sm bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-zinc-200 dark:focus:ring-zinc-800 transition-all text-zinc-900 dark:text-zinc-100 outline-none"
-            >
-              {columns.map((col) => (
-                <option key={col.id} value={col.id}>
-                  {col.title}
-                </option>
-              ))}
-            </select>
-          </div>
+          <TextInput
+            label={
+              <Group gap={6}>
+                <IconLayoutList size={14} />
+                <Text size="sm" fw={500}>Task Title</Text>
+              </Group>
+            }
+            placeholder="What needs to be done?"
+            value={newTaskTitle}
+            onChange={(e) => setNewTaskTitle(e.currentTarget.value)}
+            ref={addTitleInputRef}
+            data-autofocus
+          />
 
-          <div className="flex flex-col gap-1.5">
-            <label className="flex items-center gap-1.5 text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase">
-              <LayoutList className="w-3 h-3" />
-              Task Title
-            </label>
-            <input
-              ref={addTitleInputRef}
-              value={newTaskTitle}
-              onChange={(e) => setNewTaskTitle(e.target.value)}
-              className="w-full px-3 py-2 text-sm bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-zinc-200 dark:focus:ring-zinc-800 transition-all text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 outline-none"
-              placeholder="What needs to be done?"
-            />
-          </div>
-
-          <div className="flex flex-col gap-1.5 pb-2">
-            <label className="flex items-center gap-1.5 text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase">
-              <AlignLeft className="w-3 h-3" />
-              Description
-            </label>
+          <Stack gap={4}>
+            <Group gap={6} mb={4}>
+              <IconAlignLeft size={14} className="text-zinc-500" />
+              <Text size="sm" fw={500} c="dimmed">Description</Text>
+            </Group>
             <MarkdownEditor
               value={newTaskContent}
               onChange={setNewTaskContent}
               placeholder="Add some details..."
             />
-          </div>
-        </div>
+          </Stack>
+        </Stack>
 
-        {/* ── Footer (always visible) ── */}
-        <div className="flex items-center justify-end gap-3 shrink-0 px-6 py-4 border-t border-zinc-100 dark:border-zinc-800">
-          <button
-            onClick={() => {
-              onClose();
-              setNewTaskTitle("");
-              setNewTaskContent("");
-            }}
-            className="px-4 cursor-pointer py-2 text-sm font-semibold text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 transition-colors"
-          >
+        <Group justify="flex-end" mt="xl">
+          <Button variant="subtle" color="gray" onClick={handleClose}>
             Cancel
-          </button>
-          <button
-            onClick={() => handleSubmit()}
+          </Button>
+          <Button 
+            type="submit" 
+            color="dark" 
             disabled={isSubmitting || (!newTaskTitle.trim() && !newTaskContent.trim())}
-            className="flex items-center gap-2 px-6 py-2 text-sm font-semibold bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 rounded-xl hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            leftSection={isSubmitting ? <IconLoader2 size={16} className="animate-spin" /> : <IconCheck size={16} />}
           >
-            {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
             Create Task
-          </button>
-        </div>
-        </div>
-      </div>
-    </div>,
-    document.body
+          </Button>
+        </Group>
+      </form>
+    </Modal>
   );
 }

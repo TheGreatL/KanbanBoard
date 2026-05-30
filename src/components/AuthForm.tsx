@@ -4,7 +4,7 @@ import {useState} from 'react';
 import {supabase} from '@/lib/supabase';
 import {useRouter} from 'next/navigation';
 import Link from 'next/link';
-import {GithubIcon, Loader2, Eye, EyeOff} from 'lucide-react';
+import { IconBrandGithub, IconLoader2, IconEye, IconEyeOff } from '@tabler/icons-react';
 import {useToast} from './ui/Toast';
 import {Tooltip} from './ui/Tooltip';
 import {cn} from '@/lib/utils';
@@ -235,7 +235,7 @@ export default function AuthForm() {
 							className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors"
 							tabIndex={-1}
 						>
-							{showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+							{showPassword ? <IconEyeOff className="w-4 h-4" /> : <IconEye className="w-4 h-4" />}
 						</button>
 					</div>
 				</div>
@@ -264,7 +264,7 @@ export default function AuthForm() {
 								className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors"
 								tabIndex={-1}
 							>
-								{showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+								{showPassword ? <IconEyeOff className="w-4 h-4" /> : <IconEye className="w-4 h-4" />}
 							</button>
 						</div>
 					</div>
@@ -275,7 +275,7 @@ export default function AuthForm() {
 					disabled={loading}
 					className='w-full py-2.5 px-4 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-50 dark:hover:bg-zinc-200 text-white dark:text-zinc-900 font-medium rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center'>
 					{loading ?
-						<Loader2 className='w-5 h-5 animate-spin' />
+						<IconLoader2 className='w-5 h-5 animate-spin' />
 					: isLogin ?
 						'Sign In'
 					:	'Sign Up'}
@@ -296,7 +296,7 @@ export default function AuthForm() {
 							type='button'
 							title='Login via Github'
 							className='  p-3 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-50 dark:hover:bg-zinc-200 text-white dark:text-zinc-900 font-medium rounded-full transition-colors disabled:opacity-50 flex items-center justify-center'>
-							<GithubIcon className='w-5 h-5' />
+							<IconBrandGithub className='w-5 h-5' />
 						</button>
 					</Tooltip>{' '}
 				</div>

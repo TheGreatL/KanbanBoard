@@ -1,3 +1,4 @@
+'use client';
 import {useState, useEffect, useMemo, useRef, useCallback} from 'react';
 import {
 	DndContext,
@@ -18,9 +19,9 @@ import {TransformWrapper, TransformComponent, useControls, useTransformEffect} f
 import Column, {ColumnType} from './Column';
 import TaskCard, {Task} from './TaskCard';
 import {supabase} from '@/lib/supabase';
-import {Tooltip} from './ui/Tooltip';
+import {Tooltip, ActionIcon, Button, Avatar} from '@mantine/core';
 import {useToast} from './ui/Toast';
-import {Plus, ZoomIn, Maximize, Columns, Share2, Users, LayoutDashboard, Lock, ZoomOut} from 'lucide-react';
+import {IconPlus, IconZoomIn, IconMaximize, IconColumns, IconShare, IconUsers, IconLayoutDashboard, IconLock, IconZoomOut} from '@tabler/icons-react';
 import ShareModal from './modals/ShareModal';
 import AddTaskModal from './modals/AddTaskModal';
 import AddColumnModal from './modals/AddColumnModal';
@@ -44,27 +45,27 @@ function ZoomControls() {
 
 	return (
 		<div className='absolute top-auto bottom-6 right-6 flex items-center gap-1 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-1.5 shadow-sm z-50 no-pan animate-in slide-in-from-bottom-4 duration-500'>
-			<Tooltip text='Zoom Out'>
-				<button
-					onClick={() => zoomOut(0.2)}
-					className='p-2 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-xl transition-all active:scale-95'>
-					<ZoomOut className='w-5 h-5' />
-				</button>
+			<Tooltip label='Zoom Out' position="top" withArrow>
+				<ActionIcon
+					variant="subtle" color="gray" size="lg"
+					onClick={() => zoomOut(0.2)}>
+					<IconZoomOut size={18} />
+				</ActionIcon>
 			</Tooltip>
-			<Tooltip text='Zoom In'>
-				<button
-					onClick={() => zoomIn(0.2)}
-					className='p-2 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-xl transition-all active:scale-95'>
-					<ZoomIn className='w-5 h-5' />
-				</button>
+			<Tooltip label='Zoom In' position="top" withArrow>
+				<ActionIcon
+					variant="subtle" color="gray" size="lg"
+					onClick={() => zoomIn(0.2)}>
+					<IconZoomIn size={18} />
+				</ActionIcon>
 			</Tooltip>
 			<div className='w-px h-6 bg-zinc-200/50 dark:bg-zinc-800/50 mx-1' />
-			<Tooltip text='Reset Camera'>
-				<button
-					onClick={() => resetTransform()}
-					className='p-2 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-xl transition-all active:scale-95'>
-					<Maximize className='w-5 h-5' />
-				</button>
+			<Tooltip label='Reset Camera' position="top" withArrow>
+				<ActionIcon
+					variant="subtle" color="gray" size="lg"
+					onClick={() => resetTransform()}>
+					<IconMaximize size={18} />
+				</ActionIcon>
 			</Tooltip>
 			<div className='hidden lg:flex items-center'>
 				<div className='w-px h-6 bg-zinc-200/50 dark:bg-zinc-800/50 mx-1' />
@@ -910,25 +911,26 @@ export default function KanbanBoard({projectId, onToggleSidebar}: KanbanBoardPro
 				<div className='flex flex-col sm:flex-row items-start sm:items-center justify-between px-4 lg:px-6 py-4 sm:py-3 border-b border-zinc-200/50 dark:border-zinc-800/50 glass z-[60] gap-4 sm:gap-2'>
 					<div className='flex items-center gap-3 lg:gap-4 overflow-hidden w-full sm:w-auto'>
 						<div className='flex items-center gap-2 overflow-hidden'>
-							<button
+							<ActionIcon
+								variant="subtle" color="gray" size="lg"
 								onClick={(e) => {
 									e.stopPropagation();
 									onToggleSidebar();
 								}}
-								className="lg:hidden w-8 h-8 rounded-lg bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center shrink-0 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors"
+								className="lg:hidden"
 								aria-label="Toggle Sidebar"
 							>
-								<LayoutDashboard className="w-4 h-4 text-zinc-600 dark:text-zinc-400" />
-							</button>
+								<IconLayoutDashboard size={18} />
+							</ActionIcon>
 							<div className='hidden lg:flex w-8 h-8 rounded-lg bg-zinc-100 dark:bg-zinc-800 items-center justify-center shrink-0'>
-								<Columns className='w-4 h-4 text-zinc-500' />
+								<IconColumns size={16} className='text-zinc-500' />
 							</div>
 							<h2 className='text-sm font-bold text-zinc-900 dark:text-zinc-100 truncate '>
 								{projectName || 'Board Canvas'}
 							</h2>
 							{!isEditable && (
 								<div className='flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-[10px] font-bold text-zinc-500 uppercase animate-in fade-in slide-in-from-left-2 duration-300'>
-									<Lock className='w-2.5 h-2.5' />
+									<IconLock size={12} />
 									<span>View Only</span>
 								</div>
 							)}
@@ -944,22 +946,15 @@ export default function KanbanBoard({projectId, onToggleSidebar}: KanbanBoardPro
 							{collaborators.map((collab, idx) => (
 								<Tooltip
 									key={idx}
-									text={collab.username || 'Collaborator'}>
-									<div className='inline-block h-7 w-7 rounded-full ring-2 ring-white dark:ring-zinc-950 overflow-hidden bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 shadow-sm'>
-										{collab.avatar_url ?
-											<Image
-												src={collab.avatar_url}
-												alt={collab.username || 'Collaborator'}
-												className='w-full h-full object-cover'
-												width={28}
-												height={28}
-												unoptimized
-											/>
-										:	<div className='w-full h-full flex items-center justify-center text-[10px] font-bold text-zinc-600 dark:text-zinc-400'>
-												{collab.username?.charAt(0).toUpperCase()}
-											</div>
-										}
-									</div>
+									label={collab.username || 'Collaborator'} position="bottom" withArrow>
+									<Avatar
+										src={collab.avatar_url || null}
+										radius="xl"
+										size="sm"
+										className='ring-2 ring-white dark:ring-zinc-950 shadow-sm'
+									>
+										{collab.username?.charAt(0).toUpperCase()}
+									</Avatar>
 								</Tooltip>
 							))}
 							{collaborators.length === 0 && (
@@ -969,7 +964,7 @@ export default function KanbanBoard({projectId, onToggleSidebar}: KanbanBoardPro
 										openShareModal();
 									}}
 									className='flex items-center gap-1.5 text-[10px] text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 font-bold uppercase transition-colors'>
-									<Users className='w-3 h-3' />
+									<IconUsers size={14} />
 									<span>Just you</span>
 								</button>
 							)}
@@ -977,29 +972,36 @@ export default function KanbanBoard({projectId, onToggleSidebar}: KanbanBoardPro
 					</div>
 
 					<div className='flex items-center gap-2 w-full sm:w-auto justify-end'>
-						<button
+						<Button
 							onClick={() => openAddTaskModal()}
 							disabled={columns.length === 0 || !isEditable}
-							className='flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 text-xs font-bold bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 rounded-xl hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-all shadow-lg shadow-zinc-950/20 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer'>
-							<Plus className='w-3.5 h-3.5' />
+							color="dark"
+							radius="xl"
+							size="xs"
+							leftSection={<IconPlus size={14} />}>
 							Task
-						</button>
+						</Button>
 						<div className='flex items-center gap-3'>
 							{isEditable && (
-								<button
+								<Button
 									onClick={openAddColumnModal}
-									className='hidden sm:flex items-center gap-2 px-4 py-2 text-sm bg-zinc-900 dark:bg-zinc-50 text-white dark:text-zinc-950 font-bold rounded-xl hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-all shadow-lg active:scale-95 cursor-pointer whitespace-nowrap'>
-									<Plus className='w-4 h-4' />
+									color="dark"
+									radius="xl"
+									size="xs"
+									leftSection={<IconPlus size={16} />}
+									className='hidden sm:flex'>
 									Add Column
-								</button>
+								</Button>
 							)}
 							{currentUserRole === 'owner' && (
-								<button
+								<Button
 									onClick={openShareModal}
-									className='flex items-center gap-2 px-4 py-2 text-sm glass text-zinc-900 dark:text-zinc-100 font-bold rounded-xl hover:bg-white/40 active:scale-95 transition-all shadow-md cursor-pointer'>
-									<Share2 className='w-4 h-4' />
+									variant="default"
+									radius="xl"
+									size="xs"
+									leftSection={<IconShare size={16} />}>
 									Share
-								</button>
+								</Button>
 							)}
 						</div>
 					</div>
@@ -1051,7 +1053,7 @@ export default function KanbanBoard({projectId, onToggleSidebar}: KanbanBoardPro
 								<button
 									onClick={openAddColumnModal}
 									className='no-pan w-80 shrink-0 h-[60px] flex items-center justify-center gap-2 border-2 border-dashed border-zinc-200 dark:border-zinc-800 rounded-2xl text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:border-zinc-300 dark:hover:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-900/50 transition-all cursor-pointer group'>
-									<Plus className='w-5 h-5 group-hover:scale-110 transition-transform' />
+									<IconPlus size={20} className='group-hover:scale-110 transition-transform' />
 									<span className='font-medium text-sm'>Add another column</span>
 								</button>
 							)}

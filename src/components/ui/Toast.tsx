@@ -2,7 +2,7 @@
 
 import React, {createContext, useContext, useState, useCallback, ReactNode, useEffect, useRef} from 'react';
 import {useTransition, animated} from '@react-spring/web';
-import {X, CheckCircle, AlertCircle, Info, AlertTriangle, LucideIcon} from 'lucide-react';
+import { IconX, IconCircleCheck, IconAlertCircle, IconInfoCircle, IconAlertTriangle } from '@tabler/icons-react';
 import {clsx, type ClassValue} from 'clsx';
 import {twMerge} from 'tailwind-merge';
 
@@ -43,28 +43,28 @@ export const useToast = () => {
 
 const TOAST_CONFIG = {
 	success: {
-		icon: CheckCircle,
+		icon: IconCircleCheck,
 		colorClass: 'text-emerald-600 dark:text-emerald-400',
 		borderClass: 'border-emerald-100 dark:border-emerald-900/30',
 		bgClass: 'bg-white dark:bg-zinc-950',
 		iconContainer: 'bg-emerald-50 dark:bg-emerald-500/10',
 	},
 	error: {
-		icon: AlertCircle,
+		icon: IconAlertCircle,
 		colorClass: 'text-rose-600 dark:text-rose-400',
 		borderClass: 'border-rose-100 dark:border-rose-900/30',
 		bgClass: 'bg-white dark:bg-zinc-950',
 		iconContainer: 'bg-rose-50 dark:bg-rose-500/10',
 	},
 	info: {
-		icon: Info,
+		icon: IconInfoCircle,
 		colorClass: 'text-zinc-600 dark:text-zinc-400',
 		borderClass: 'border-zinc-100 dark:border-zinc-800',
 		bgClass: 'bg-white dark:bg-zinc-950',
 		iconContainer: 'bg-zinc-50 dark:bg-zinc-900',
 	},
 	warning: {
-		icon: AlertTriangle,
+		icon: IconAlertTriangle,
 		colorClass: 'text-amber-600 dark:text-amber-400',
 		borderClass: 'border-amber-100 dark:border-amber-900/30',
 		bgClass: 'bg-white dark:bg-zinc-950',
@@ -131,7 +131,7 @@ const ToastItem: React.FC<{toast: Toast; onRemove: (id: string) => void}> = ({to
 				<button
 					onClick={() => onRemove(toast.id)}
 					className='p-1 -mr-1 rounded-md text-zinc-300 hover:text-zinc-900 dark:text-zinc-700 dark:hover:text-zinc-100 transition-colors shrink-0'>
-					<X className='w-3.5 h-3.5' />
+					<IconX className='w-3.5 h-3.5' />
 				</button>
 			</div>
 		</div>

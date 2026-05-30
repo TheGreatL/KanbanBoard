@@ -1,10 +1,10 @@
-import { Tooltip } from "./ui/Tooltip";
+'use client';
 import { cn } from "@/lib/utils";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Trash2, Pencil, X, Check, Calendar, GripVertical, RotateCcw } from "lucide-react";
+import { IconTrash, IconPencil, IconX, IconCheck, IconCalendar, IconGripVertical, IconRotateClockwise } from "@tabler/icons-react";
 import { useState, useRef, useEffect } from "react";
-import { createPortal } from "react-dom";
+import { Tooltip, Modal, Button, Text, Group, ActionIcon, TextInput, Textarea } from '@mantine/core';
 
 export interface Task {
   id: string;
@@ -65,38 +65,21 @@ export default function TaskCard({ task, columnColor = "zinc", deleteTask, updat
   const [editContent, setEditContent] = useState(task.content ?? "");
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isRestoreDialogOpen, setIsRestoreDialogOpen] = useState(false);
-  const modalRef = useRef<HTMLDivElement>(null);
   const titleInputRef = useRef<HTMLInputElement>(null);
 
   const isArchived = !!task.archived_at;
   const accentColorClass = STRIP_COLOR_MAP[columnColor] || STRIP_COLOR_MAP.zinc;
 
-  // Sync edit fields if task changes externally
   useEffect(() => {
     setEditTitle((prev: string) => prev !== task.title ? (task.title ?? "") : prev);
     setEditContent((prev: string) => prev !== task.content ? (task.content ?? "") : prev);
   }, [task.title, task.content]);
 
-  // Auto-focus without triggering scroll-into-view
   useEffect(() => {
     if (isEditing && titleInputRef.current) {
       titleInputRef.current.focus({ preventScroll: true });
     }
   }, [isEditing]);
-
-  // Close modal on outside click
-  useEffect(() => {
-    if (!isEditing) return;
-    function handleClickOutside(e: MouseEvent) {
-      if (modalRef.current && !modalRef.current.contains(e.target as Node)) {
-        setIsEditing(false);
-        setEditTitle(task.title ?? "");
-        setEditContent(task.content ?? "");
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [isEditing, task.title, task.content]);
 
   const handleEditSave = async () => {
     const trimTitle = editTitle.trim();
@@ -114,6 +97,12 @@ export default function TaskCard({ task, columnColor = "zinc", deleteTask, updat
       setEditTitle(task.title ?? "");
       setEditContent(task.content ?? "");
     }
+  };
+
+  const cancelEdit = () => {
+    setIsEditing(false);
+    setEditTitle(task.title ?? "");
+    setEditContent(task.content ?? "");
   };
 
   if (isDragging && !isOverlay) {
@@ -134,23 +123,20 @@ export default function TaskCard({ task, columnColor = "zinc", deleteTask, updat
         className="no-pan group bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/50 dark:border-zinc-800/50 hover:border-blue-500/30 dark:hover:border-blue-500/30 hover:shadow-xl hover:shadow-zinc-200/30 dark:hover:shadow-black/50 transition-all text-sm text-zinc-800 dark:text-zinc-200 flex items-stretch cursor-default relative overflow-hidden active:scale-[0.99]"
         tabIndex={undefined}
       >
-        {/* Semantic Left Strip */}
         <div className={`w-1 shrink-0 ${accentColorClass} opacity-80 group-hover:opacity-100 transition-opacity`} />
 
-        {/* Drag handle — overlays content slightly or sits on left */}
         {isEditable && (
-          <Tooltip text="Drag to move" position="right">
+          <Tooltip label="Drag to move" position="right" withArrow>
             <div
               {...attributes}
               {...listeners}
               className="flex items-center justify-center px-1 text-zinc-300 dark:text-zinc-700 hover:text-zinc-500 dark:hover:text-zinc-400 cursor-grab active:cursor-grabbing hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors shrink-0"
             >
-              <GripVertical className="w-3.5 h-3.5" />
+              <IconGripVertical size={14} />
             </div>
           </Tooltip>
         )}
 
-        {/* Card content */}
         <div className="flex flex-col gap-1.5 p-3 pl-1 flex-1 min-w-0">
           {task.title && (
             <p className="font-semibold text-zinc-900 dark:text-zinc-100 text-sm leading-snug break-words">
@@ -163,11 +149,10 @@ export default function TaskCard({ task, columnColor = "zinc", deleteTask, updat
             </p>
           )}
 
-          {/* Footer */}
           <div className="flex items-center justify-between mt-1">
             {task.created_at ? (
               <span className="flex items-center gap-1.5 text-[10px] text-zinc-400 dark:text-zinc-500 font-semibold select-none">
-                <Calendar className="w-2.5 h-2.5" />
+                <IconCalendar size={12} />
                 {formatDate(task.created_at)}
               </span>
             ) : (
@@ -179,24 +164,29 @@ export default function TaskCard({ task, columnColor = "zinc", deleteTask, updat
               isEditable ? "lg:invisible lg:opacity-0 lg:group-hover:visible lg:group-hover:opacity-100 transition-all translate-x-0 lg:translate-x-1 lg:group-hover:translate-x-0" : "hidden"
             )}>
               {restoreTask && isEditable && (
-                  <Tooltip text="Restore task">
-                    <button
+                  <Tooltip label="Restore task" position="top" withArrow>
+                    <ActionIcon
+                      variant="subtle"
+                      color="teal"
+                      size="sm"
                       onClick={(e) => {
                         e.stopPropagation();
                         setIsRestoreDialogOpen(true);
                       }}
                       onPointerDown={(e) => e.stopPropagation()}
                       onMouseDown={(e) => e.preventDefault()}
-                      className="p-1.5 px-2 text-zinc-400 hover:text-emerald-500 rounded-xl hover:bg-emerald-50 dark:hover:bg-emerald-500/10 transition-colors cursor-pointer"
                     >
-                      <RotateCcw className="w-3.5 h-3.5" />
-                    </button>
+                      <IconRotateClockwise size={14} />
+                    </ActionIcon>
                   </Tooltip>
               )}
               {isEditable && (
                 <>
-                  <Tooltip text="Edit task">
-                    <button
+                  <Tooltip label="Edit task" position="top" withArrow>
+                    <ActionIcon
+                      variant="subtle"
+                      color="blue"
+                      size="sm"
                       onClick={(e) => {
                         e.stopPropagation();
                         setEditTitle(task.title ?? "");
@@ -205,23 +195,24 @@ export default function TaskCard({ task, columnColor = "zinc", deleteTask, updat
                       }}
                       onPointerDown={(e) => e.stopPropagation()}
                       onMouseDown={(e) => e.preventDefault()}
-                      className="p-1 px-1.5 text-zinc-400 hover:text-blue-500 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
                     >
-                      <Pencil className="w-3.5 h-3.5" />
-                    </button>
+                      <IconPencil size={14} />
+                    </ActionIcon>
                   </Tooltip>
-                  <Tooltip text={isArchived ? "Delete permanently" : "Archive task"}>
-                    <button
+                  <Tooltip label={isArchived ? "Delete permanently" : "Archive task"} position="top" withArrow>
+                    <ActionIcon
+                      variant="subtle"
+                      color="red"
+                      size="sm"
                       onClick={(e) => {
                         e.stopPropagation();
                         setIsDeleteDialogOpen(true);
                       }}
                       onPointerDown={(e) => e.stopPropagation()}
                       onMouseDown={(e) => e.preventDefault()}
-                      className="p-1.5 px-2 text-zinc-400 hover:text-red-500 rounded-xl hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors cursor-pointer"
                     >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                      <IconTrash size={14} />
+                    </ActionIcon>
                   </Tooltip>
                 </>
               )}
@@ -230,227 +221,64 @@ export default function TaskCard({ task, columnColor = "zinc", deleteTask, updat
         </div>
       </div>
 
-      {/* Edit Modal — portalled to document.body */}
-      {isEditing && typeof window !== "undefined" && createPortal(
-        <div
-          className="fixed inset-0 z-[200] overflow-y-auto bg-black/60"
-          onPointerDown={(e) => {
-            if (e.target === e.currentTarget) {
-              setIsEditing(false);
-              setEditTitle(task.title ?? "");
-              setEditContent(task.content ?? "");
-            }
-          }}
-        >
-          <div className="flex min-h-full items-center justify-center p-4">
-          <div
-            ref={modalRef}
-            className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl w-full max-w-md flex flex-col max-h-[85vh]"
+      <Modal opened={isEditing} onClose={cancelEdit} title={<Group gap="xs"><IconPencil size={18} className="text-zinc-400"/><Text fw={600}>Edit Task</Text></Group>} centered>
+        <div className="flex flex-col gap-3">
+          <TextInput
+            label="Title"
+            value={editTitle}
+            onChange={(e) => setEditTitle(e.currentTarget.value)}
             onKeyDown={handleEditKeyDown}
-          >
-            {/* ── Header (always visible) ── */}
-            <div className="flex items-center justify-between shrink-0 px-6 pt-5 pb-4">
-              <div className="flex items-center gap-2">
-                <Pencil className="w-4 h-4 text-zinc-400" />
-                <h2 className="font-semibold text-zinc-900 dark:text-zinc-100 text-base">Edit Task</h2>
-              </div>
-              <button
-                onClick={() => {
-                  setIsEditing(false);
-                  setEditTitle(task.title ?? "");
-                  setEditContent(task.content ?? "");
-                }}
-                className="p-1.5 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
+            placeholder="Task title..."
+            ref={titleInputRef}
+          />
+          <Textarea
+            label="Description"
+            value={editContent}
+            onChange={(e) => setEditContent(e.currentTarget.value)}
+            onKeyDown={handleEditKeyDown}
+            placeholder="Add a description..."
+            minRows={4}
+            maxRows={8}
+            autosize
+          />
+        </div>
+        <Group justify="flex-end" mt="xl">
+          <Button variant="subtle" color="gray" onClick={cancelEdit}>Cancel</Button>
+          <Button color="dark" leftSection={<IconCheck size={16} />} onClick={handleEditSave}>Save Changes</Button>
+        </Group>
+      </Modal>
 
-            {/* ── Scrollable body ── */}
-            <div className="flex-1 overflow-y-auto min-h-0 px-6 flex flex-col gap-3">
-              <div className="flex flex-col gap-1">
-                <label className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase ">
-                  Title
-                </label>
-                <input
-                  ref={titleInputRef}
-                  value={editTitle}
-                  onChange={(e) => setEditTitle(e.target.value)}
-                  onPointerDown={(e) => e.stopPropagation()}
-                  placeholder="Task title…"
-                  className="w-full px-3 py-2 text-sm bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:ring-1 focus:ring-zinc-400 dark:focus:ring-zinc-600 transition-all text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 outline-none"
-                />
-              </div>
+      <Modal opened={isRestoreDialogOpen} onClose={() => setIsRestoreDialogOpen(false)} title={<Group gap="xs"><IconRotateClockwise size={18} className="text-emerald-500"/><Text fw={600}>Restore Task</Text></Group>} centered>
+        <Text size="sm" c="dimmed" mb="lg">
+          Restore <Text span fw={600} c="var(--mantine-color-text)">&quot;{task.title}&quot;</Text> to its original column?
+        </Text>
+        <Group justify="flex-end">
+          <Button variant="subtle" color="gray" onClick={() => setIsRestoreDialogOpen(false)}>Cancel</Button>
+          <Button color="teal" leftSection={<IconCheck size={16} />} onClick={async () => {
+            if (restoreTask) {
+              await restoreTask(task.id, "");
+              setIsRestoreDialogOpen(false);
+            }
+          }}>Restore Task</Button>
+        </Group>
+      </Modal>
 
-              <div className="flex flex-col gap-1">
-                <label className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase ">
-                  Description
-                </label>
-                <textarea
-                  value={editContent}
-                  onChange={(e) => setEditContent(e.target.value)}
-                  onPointerDown={(e) => e.stopPropagation()}
-                  placeholder="Add a description…"
-                  rows={4}
-                  className="w-full px-3 py-2 text-sm bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:ring-1 focus:ring-zinc-400 dark:focus:ring-zinc-600 transition-all text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 resize-none outline-none"
-                />
-              </div>
-            </div>
-
-            {/* ── Footer (always visible) ── */}
-            <div className="flex items-center justify-end gap-2 shrink-0 px-6 py-4 border-t border-zinc-100 dark:border-zinc-800">
-              <button
-                onClick={() => {
-                  setIsEditing(false);
-                  setEditTitle(task.title ?? "");
-                  setEditContent(task.content ?? "");
-                }}
-                className="px-4 py-2 text-xs text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors font-bold cursor-pointer rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-900"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleEditSave}
-                className="flex items-center gap-1.5 px-6 py-2 text-xs bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 font-bold rounded-lg hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors cursor-pointer"
-              >
-                <Check className="w-3.5 h-3.5" />
-                Save Changes
-              </button>
-            </div>
-          </div>
-          </div>
-        </div>,
-        document.body
-      )}
-
-      {/* Restore Task Modal */}
-      {isRestoreDialogOpen && typeof window !== "undefined" && createPortal(
-        <div
-          className="fixed inset-0 z-[202] overflow-y-auto bg-black/60"
-          onPointerDown={(e) => {
-            if (e.target === e.currentTarget) setIsRestoreDialogOpen(false);
-          }}
-        >
-          <div className="flex min-h-full items-center justify-center p-4">
-          <div
-            className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl w-full max-w-sm flex flex-col gap-4 p-6 cursor-auto max-h-[85vh]"
-            onClick={(e) => e.stopPropagation()}
-            onKeyDown={(e) => {
-              if (e.key === "Escape") setIsRestoreDialogOpen(false);
-            }}
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <RotateCcw className="w-4 h-4 text-emerald-500" />
-                <h2 className="font-bold text-zinc-900 dark:text-zinc-100 text-base">Restore Task</h2>
-              </div>
-              <button
-                onClick={() => setIsRestoreDialogOpen(false)}
-                className="p-1.5 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            
-            <p className="text-sm text-zinc-500 dark:text-zinc-400 font-medium leading-relaxed">
-              Restore <span className="font-semibold text-zinc-900 dark:text-zinc-100">"{task.title}"</span> to its original column?
-            </p>
-
-            <div className="flex items-center justify-end gap-2 pt-2">
-              <button
-                onClick={() => setIsRestoreDialogOpen(false)}
-                className="px-4 py-2 text-xs text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors font-bold cursor-pointer rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-900"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={async () => {
-                  if (restoreTask) {
-                    await restoreTask(task.id, "");
-                    setIsRestoreDialogOpen(false);
-                  }
-                }}
-                className="flex items-center gap-1.5 px-5 py-2 text-xs text-white font-bold bg-emerald-500 rounded-lg hover:bg-emerald-600 transition-colors cursor-pointer"
-              >
-                <Check className="w-3.5 h-3.5" />
-                Restore Task
-              </button>
-            </div>
-          </div>
-          </div>
-        </div>,
-        document.body
-      )}
-
-      {/* Confirmation Modal — Context Aware (Archive vs Permanent Delete) */}
-      {isDeleteDialogOpen && typeof window !== "undefined" && createPortal(
-        <div
-          className="fixed inset-0 z-[200] overflow-y-auto bg-black/60"
-          onPointerDown={(e) => {
-            if (e.target === e.currentTarget) setIsDeleteDialogOpen(false);
-          }}
-        >
-          <div className="flex min-h-full items-center justify-center p-4">
-          <div
-            className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl w-full max-w-sm flex flex-col gap-4 p-6 max-h-[85vh]"
-            onKeyDown={(e) => {
-              if (e.key === "Escape") setIsDeleteDialogOpen(false);
-            }}
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                {isArchived ? (
-                  <Trash2 className="w-4 h-4 text-red-500" />
-                ) : (
-                  <RotateCcw className="w-4 h-4 text-amber-500" />
-                )}
-                <h2 className="font-bold text-zinc-900 dark:text-zinc-100 text-base">
-                  {isArchived ? "Delete Permanently" : "Archive Task"}
-                </h2>
-              </div>
-              <button
-                onClick={() => setIsDeleteDialogOpen(false)}
-                className="p-1.5 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <p className="text-sm text-zinc-500 dark:text-zinc-400 font-medium leading-relaxed">
-              {isArchived ? (
-                <>Are you sure you want to permanently delete <span className="font-semibold text-zinc-900 dark:text-zinc-100">"{task.title}"</span>? This action cannot be undone.</>
-              ) : (
-                <>Move <span className="font-semibold text-zinc-900 dark:text-zinc-100">"{task.title}"</span> to the archive? You can restore it anytime from the archive pool.</>
-              )}
-            </p>
-
-            <div className="flex items-center justify-end gap-2 pt-2">
-              <button
-                onClick={() => setIsDeleteDialogOpen(false)}
-                className="px-4 py-2 text-xs text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors font-bold cursor-pointer rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-900"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => {
-                  deleteTask(task.id);
-                  setIsDeleteDialogOpen(false);
-                }}
-                className={`flex items-center gap-1.5 px-5 py-2 text-xs text-white font-bold rounded-lg transition-colors cursor-pointer ${
-                  isArchived 
-                    ? "bg-red-500 hover:bg-red-600" 
-                    : "bg-amber-500 hover:bg-amber-600"
-                }`}
-              >
-                {isArchived ? <Trash2 className="w-3.5 h-3.5" /> : <Check className="w-3.5 h-3.5" />}
-                {isArchived ? "Delete Permanently" : "Confirm Archive"}
-              </button>
-            </div>
-          </div>
-          </div>
-        </div>,
-        document.body
-      )}
+      <Modal opened={isDeleteDialogOpen} onClose={() => setIsDeleteDialogOpen(false)} title={<Group gap="xs">{isArchived ? <IconTrash size={18} className="text-red-500" /> : <IconRotateClockwise size={18} className="text-amber-500" />}<Text fw={600}>{isArchived ? "Delete Permanently" : "Archive Task"}</Text></Group>} centered>
+        <Text size="sm" c="dimmed" mb="lg">
+          {isArchived ? (
+            <>Are you sure you want to permanently delete <Text span fw={600} c="var(--mantine-color-text)">&quot;{task.title}&quot;</Text>? This action cannot be undone.</>
+          ) : (
+            <>Move <Text span fw={600} c="var(--mantine-color-text)">&quot;{task.title}&quot;</Text> to the archive? You can restore it anytime from the archive pool.</>
+          )}
+        </Text>
+        <Group justify="flex-end">
+          <Button variant="subtle" color="gray" onClick={() => setIsDeleteDialogOpen(false)}>Cancel</Button>
+          <Button color={isArchived ? "red" : "orange"} leftSection={isArchived ? <IconTrash size={16} /> : <IconCheck size={16} />} onClick={() => {
+            deleteTask(task.id);
+            setIsDeleteDialogOpen(false);
+          }}>{isArchived ? "Delete Permanently" : "Confirm Archive"}</Button>
+        </Group>
+      </Modal>
     </>
   );
 }

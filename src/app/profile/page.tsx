@@ -3,7 +3,7 @@
 import {useEffect, useState} from 'react';
 import {useRouter} from 'next/navigation';
 import {supabase} from '@/lib/supabase';
-import {Loader2, ArrowLeft, Camera, Save, Check, LogOut} from 'lucide-react';
+import { IconLoader2, IconArrowLeft, IconCamera, IconDeviceFloppy, IconCheck, IconLogout } from '@tabler/icons-react';
 import {useToast} from '@/components/ui/Toast';
 import {ProfileSkeleton, Skeleton} from '@/components/ui/Skeleton';
 
@@ -167,7 +167,7 @@ export default function ProfilePage() {
 				<button
 					onClick={() => router.push('/')}
 					className='flex items-center gap-2 text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 transition-colors group text-sm font-medium'>
-					<ArrowLeft className='w-4 h-4 transition-transform group-hover:-translate-x-1' />
+					<IconArrowLeft className='w-4 h-4 transition-transform group-hover:-translate-x-1' />
 					Back to Board
 				</button>
 				<span className='text-zinc-300 dark:text-zinc-700'>/</span>
@@ -189,8 +189,8 @@ export default function ProfilePage() {
 							</div>
 							<label className='absolute -bottom-1 -right-1 w-7 h-7 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-full flex items-center justify-center shadow-sm cursor-pointer hover:scale-110 transition-transform active:scale-95'>
 								{uploading ?
-									<Loader2 className='w-3.5 h-3.5 animate-spin text-zinc-500' />
-								:	<Camera className='w-3.5 h-3.5 text-zinc-500 dark:text-zinc-400' />}
+									<IconLoader2 className='w-3.5 h-3.5 animate-spin text-zinc-500' />
+								:	<IconCamera className='w-3.5 h-3.5 text-zinc-500 dark:text-zinc-400' />}
 								<input
 									type='file'
 									className='hidden'
@@ -253,10 +253,10 @@ export default function ProfilePage() {
 								disabled={isSaving || !username.trim()}
 								className='flex items-center gap-2 px-5 py-2.5 text-sm font-bold bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 rounded-xl hover:shadow-lg transition-all active:scale-95 disabled:opacity-50'>
 								{saved ?
-									<Check className='w-4 h-4' />
+									<IconCheck className='w-4 h-4' />
 								: isSaving ?
-									<Loader2 className='w-4 h-4 animate-spin' />
-								:	<Save className='w-4 h-4' />}
+									<IconLoader2 className='w-4 h-4 animate-spin' />
+								:	<IconDeviceFloppy className='w-4 h-4' />}
 								{saved ? 'Saved!' : 'Save Changes'}
 							</button>
 						</div>
@@ -279,7 +279,7 @@ export default function ProfilePage() {
 									router.push('/auth');
 								}}
 								className='flex items-center gap-2 px-4 py-2 text-sm font-bold text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 border border-rose-200 dark:border-rose-900/50 rounded-xl transition-colors'>
-								<LogOut className='w-4 h-4' />
+								<IconLogout className='w-4 h-4' />
 								Sign Out
 							</button>
 						</div>

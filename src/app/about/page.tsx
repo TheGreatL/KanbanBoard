@@ -1,16 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
-import { 
-  BarChart3, 
-  Zap, 
-  RotateCw, 
-  Users, 
-  Target, 
-  Lock, 
-  Smartphone, 
-  Settings2,
-  ArrowRight
-} from 'lucide-react';
+import { IconChartBar, IconBolt, IconRotateClockwise, IconUsers, IconTarget, IconLock, IconDeviceMobile, IconSettings, IconArrowRight } from '@tabler/icons-react';
 
 export default function AboutPage() {
   return (
@@ -64,7 +54,7 @@ export default function AboutPage() {
           <div className="mt-12 flex justify-center gap-4">
              <Link href="/auth" className="group flex items-center gap-2 px-8 py-4 bg-blue-600 text-white rounded-2xl font-bold text-lg hover:bg-blue-700 transition-all shadow-xl shadow-blue-500/25">
                Try it out
-               <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+               <IconArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
              </Link>
           </div>
         </div>
@@ -121,11 +111,11 @@ export default function AboutPage() {
              {/* Large Feature */}
              <div className="md:col-span-2 md:row-span-2 group relative overflow-hidden bg-white dark:bg-zinc-900 rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800 p-10 hover:shadow-2xl transition-all duration-500">
                 <div className="absolute top-0 right-0 p-8">
-                   <Target className="w-16 h-16 text-blue-600/20 group-hover:scale-110 transition-transform duration-500" />
+                   <IconTarget className="w-16 h-16 text-blue-600/20 group-hover:scale-110 transition-transform duration-500" />
                 </div>
                 <div className="relative h-full flex flex-col justify-end">
                    <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center text-white mb-6">
-                      <Zap className="w-6 h-6" />
+                      <IconChartBar className="w-6 h-6" />
                    </div>
                    <h3 className="text-3xl font-bold mb-4">Personal Projects</h3>
                    <p className="text-xl text-zinc-600 dark:text-zinc-400 max-w-md leading-relaxed">
@@ -137,7 +127,7 @@ export default function AboutPage() {
              {/* Small Feature 1 */}
              <div className="group relative overflow-hidden bg-white dark:bg-zinc-900 rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800 p-8 hover:shadow-2xl transition-all duration-500">
                 <div className="w-10 h-10 bg-indigo-500/10 dark:bg-indigo-500/20 rounded-lg flex items-center justify-center text-indigo-600 dark:text-indigo-400 mb-6">
-                   <RotateCw className="w-5 h-5" />
+                   <IconRotateClockwise className="w-5 h-5" />
                 </div>
                 <h3 className="text-xl font-bold mb-2">Event Planning</h3>
                 <p className="text-zinc-600 dark:text-zinc-400">
@@ -148,7 +138,7 @@ export default function AboutPage() {
              {/* Small Feature 2 */}
              <div className="group relative overflow-hidden bg-white dark:bg-zinc-900 rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800 p-8 hover:shadow-2xl transition-all duration-500">
                 <div className="w-10 h-10 bg-emerald-500/10 dark:bg-emerald-500/20 rounded-lg flex items-center justify-center text-emerald-600 dark:text-emerald-400 mb-6">
-                   <Users className="w-5 h-5" />
+                   <IconUsers className="w-5 h-5" />
                 </div>
                 <h3 className="text-xl font-bold mb-2">Daily Life</h3>
                 <p className="text-zinc-600 dark:text-zinc-400">
@@ -162,10 +152,10 @@ export default function AboutPage() {
         <section className="mb-32">
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
             {[
-              { icon: BarChart3, title: "Custom Columns", desc: "Create lists that match your exact workflow or needs." },
-              { icon: Lock, title: "Role Management", desc: "Assign viewers or editors to keep projects organized." },
-              { icon: Smartphone, title: "Live Collaboration", desc: "Invite friends and work together in real-time." },
-              { icon: Settings2, title: "Visual Drag-n-Drop", desc: "Move tasks around effortlessly with a smooth interface." }
+              { icon: IconChartBar, title: "Custom Columns", desc: "Create lists that match your exact workflow or needs." },
+              { icon: IconLock, title: "Role Management", desc: "Assign viewers or editors to keep projects organized." },
+              { icon: IconDeviceMobile, title: "Live Collaboration", desc: "Invite friends and work together in real-time." },
+              { icon: IconSettings, title: "Visual Drag-n-Drop", desc: "Move tasks around effortlessly with a smooth interface." }
             ].map((f, i) => (
               <div key={i} className="group p-2">
                 <div className="mb-6 w-14 h-14 rounded-2xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white transition-all duration-300">

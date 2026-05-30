@@ -1,14 +1,18 @@
-import { Plus, FolderKanban, LogOut, Trash2, Pencil, X, Archive, RotateCcw, Check, ChevronRight, Users, Settings } from "lucide-react";
+'use client';
+import { 
+  IconPlus, IconFolder, IconLogout, IconTrash, IconPencil, 
+  IconX, IconArchive, IconRotateClockwise, IconCheck, 
+  IconChevronRight, IconUsers, IconSettings 
+} from "@tabler/icons-react";
 import { useState, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
-import { Tooltip } from "./ui/Tooltip";
 import { useToast } from "./ui/Toast";
 import ProjectModal from "./modals/ProjectModal";
-import { createPortal } from "react-dom";
 import Link from "next/link";
 import { SidebarSkeleton } from "./ui/Skeleton";
 import { ProjectTemplate } from "@/lib/templates";
+import { Modal, Button, Text, Group, Menu, Avatar, UnstyledButton, ActionIcon, Tooltip } from '@mantine/core';
 
 export interface Project {
   id: string;
@@ -19,7 +23,7 @@ export interface Project {
 
 interface SidebarProps {
   projects: Project[];
-	activeProjectId: string | null;
+  activeProjectId: string | null;
   isLoading: boolean;
   onSelectProject: (id: string) => void;
   onCreateProject: (title: string, template: ProjectTemplate) => Promise<void>;
@@ -49,8 +53,6 @@ export default function Sidebar({
   const { showToast } = useToast();
   const [profile, setProfile] = useState<{ username: string; avatar_url: string | null } | null>(null);
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
-  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
-  const profileMenuRef = useRef<HTMLDivElement>(null);
   const [projectToRestore, setProjectToRestore] = useState<{ id: string; title: string } | null>(null);
   const [projectToArchive, setProjectToArchive] = useState<{ id: string; title: string } | null>(null);
   const [projectToDelete, setProjectToDelete] = useState<string | null>(null);
@@ -116,7 +118,6 @@ export default function Sidebar({
     };
     fetchProfile();
 
-    // Subscribe to profile changes
     const profileChannel = supabase
       .channel(`profile_${currentUserId}`)
       .on(
@@ -137,17 +138,6 @@ export default function Sidebar({
       supabase.removeChannel(profileChannel);
     };
   }, [currentUserId]);
-
-  // Close profile menu on outside click
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (profileMenuRef.current && !profileMenuRef.current.contains(e.target as Node)) {
-        setProfileMenuOpen(false);
-      }
-    };
-    if (profileMenuOpen) document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [profileMenuOpen]);
 
   const handleCreate = async (title: string, template: ProjectTemplate) => {
     try {
@@ -241,6 +231,7 @@ export default function Sidebar({
         message: "Could not permanently delete project.",
       });
     }
+    setProjectToDelete(null);
   };
 
   const renderProjectItem = (p: Project, isArchived: boolean = false) => (
@@ -256,20 +247,24 @@ export default function Sidebar({
         onClick={() => onSelectProject(p.id)}
       >
         <span className="truncate flex-1 flex items-center gap-1.5 font-medium">
-          <FolderKanban
-            className={`w-3.5 h-3.5 shrink-0 transition-colors ${
+          <IconFolder
+            size={14}
+            className={`shrink-0 transition-colors ${
               activeProjectId === p.id ? "text-zinc-600 dark:text-zinc-300" : "text-zinc-400 dark:text-zinc-600"
             }`}
           />
           {p.title}
           {p.user_id !== currentUserId && (
-            <Users className="w-2.5 h-2.5 ml-1 text-zinc-400 group-hover:text-zinc-500" />
+            <IconUsers size={12} className="ml-1 text-zinc-400 group-hover:text-zinc-500" />
           )}
         </span>
 
-        <div className="flex items-center gap-1  lg:opacity-0 lg:group-hover:opacity-100 transition-all ml-2">
-          <Tooltip text="Edit Project">
-            <button
+        <div className="flex items-center gap-1 lg:opacity-0 lg:group-hover:opacity-100 transition-all ml-2">
+          <Tooltip label="Edit Project" position="top" withArrow>
+            <ActionIcon
+              variant="subtle"
+              color="blue"
+              size="sm"
               onClick={(e) => {
                 e.stopPropagation();
                 setProjectModalMode("edit");
@@ -277,47 +272,52 @@ export default function Sidebar({
                 setProjectModalId(p.id);
                 setIsProjectModalOpen(true);
               }}
-              className="text-zinc-400 hover:text-blue-500 transition-colors p-1 rounded-md hover:bg-zinc-200 dark:hover:bg-zinc-800 cursor-pointer"
             >
-              <Pencil className="w-3.5 h-3.5" />
-            </button>
+              <IconPencil size={14} />
+            </ActionIcon>
           </Tooltip>
           {isArchived ? (
             <>
-              <Tooltip text="Restore Project">
-                <button
+              <Tooltip label="Restore Project" position="top" withArrow>
+                <ActionIcon
+                  variant="subtle"
+                  color="teal"
+                  size="sm"
                   onClick={(e) => {
                     e.stopPropagation();
                     setProjectToRestore({ id: p.id, title: p.title });
                   }}
-                  className="text-zinc-400 hover:text-emerald-500 transition-colors p-1 rounded-md hover:bg-zinc-200 dark:hover:bg-zinc-800 cursor-pointer"
                 >
-                  <RotateCcw className="w-3.5 h-3.5" />
-                </button>
+                  <IconRotateClockwise size={14} />
+                </ActionIcon>
               </Tooltip>
-              <Tooltip text="Delete Project Permanently">
-                <button
+              <Tooltip label="Delete Project Permanently" position="top" withArrow>
+                <ActionIcon
+                  variant="subtle"
+                  color="red"
+                  size="sm"
                   onClick={(e) => {
                     e.stopPropagation();
                     setProjectToDelete(p.id);
                   }}
-                  className="text-zinc-400 hover:text-rose-500 p-1 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
                 >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
+                  <IconTrash size={14} />
+                </ActionIcon>
               </Tooltip>
             </>
           ) : (
-            <Tooltip text="Archive Project">
-              <button
+            <Tooltip label="Archive Project" position="top" withArrow>
+              <ActionIcon
+                variant="subtle"
+                color="orange"
+                size="sm"
                 onClick={(e) => {
                   e.stopPropagation();
                   setProjectToArchive({ id: p.id, title: p.title });
                 }}
-                className="text-zinc-400 hover:text-amber-500 transition-colors p-1 rounded-md hover:bg-zinc-200 dark:hover:bg-zinc-800 cursor-pointer"
               >
-                <Archive className="w-3.5 h-3.5" />
-              </button>
+                <IconArchive size={14} />
+              </ActionIcon>
             </Tooltip>
           )}
         </div>
@@ -340,36 +340,39 @@ export default function Sidebar({
       <div className="p-4 flex items-center justify-between border-b border-zinc-200/50 dark:border-zinc-800/50">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center shadow-sm">
-            <FolderKanban className="w-4 h-4 text-white" />
+            <IconFolder size={18} className="text-white" />
           </div>
           <h1 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">Kanban</h1>
         </div>
         {onClose && (
-          <button
+          <ActionIcon
+            variant="subtle"
+            color="gray"
+            className="lg:hidden"
             onClick={onClose}
-            className="lg:hidden p-2 text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
           >
-            <X className="w-5 h-5" />
-          </button>
+            <IconX size={20} />
+          </ActionIcon>
         )}
       </div>
 
       <div className="flex-1 overflow-y-auto hide-scrollbar p-3">
         <div className="flex items-center justify-between px-2 mb-2">
-          <h2 className="text-xs font-semibold text-zinc-500 uppercase ">Projects</h2>
-          <button
+          <h2 className="text-xs font-semibold text-zinc-500 uppercase">Projects</h2>
+          <ActionIcon
+            variant="subtle"
+            color="gray"
+            size="sm"
             onClick={() => {
               setProjectModalMode("create");
               setProjectModalTitle("");
               setProjectModalId(null);
               setIsProjectModalOpen(true);
             }}
-            className="text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors cursor-pointer"
           >
-            <Plus className="w-4 h-4" />
-          </button>
+            <IconPlus size={16} />
+          </ActionIcon>
         </div>
-
 
         {isLoading ? (
           <SidebarSkeleton />
@@ -388,9 +391,10 @@ export default function Sidebar({
                   onClick={() => setIsArchivedExpanded(!isArchivedExpanded)}
                   className="flex items-center gap-1.5 w-full px-2 py-1.5 text-xs font-semibold text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors uppercase group"
                 >
-                  <ChevronRight
+                  <IconChevronRight
+                    size={14}
                     className={cn(
-                      "w-3.5 h-3.5 transition-transform duration-200",
+                      "transition-transform duration-200",
                       isArchivedExpanded && "rotate-90"
                     )}
                   />
@@ -411,58 +415,37 @@ export default function Sidebar({
         )}
       </div>
 
-      {/* Profile trigger (with popover menu) */}
-      <div className="p-3 border-t border-zinc-200/50 dark:border-zinc-800/50 relative" ref={profileMenuRef}>
-        <button
-          onClick={() => setProfileMenuOpen((v) => !v)}
-          className="flex items-center gap-3 w-full p-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors group text-left"
-        >
-          <div className="w-8 h-8 rounded-full bg-zinc-200 dark:bg-zinc-800 border-2 border-white dark:border-zinc-900 overflow-hidden shrink-0">
-            <img
-              src={profile?.avatar_url || "https://oqhjxepxjzkfunemjvqp.supabase.co/storage/v1/object/public/avatars/user-default.png"}
-              alt="Avatar"
-              className="w-full h-full object-cover"
-            />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 truncate leading-tight">
-              {profile?.username || "—"}
-            </p>
-            <p className="text-[10px] font-semibold text-zinc-400 uppercase ">
-              My account
-            </p>
-          </div>
-          <ChevronRight
-            className={`w-4 h-4 text-zinc-400 transition-transform duration-200 ${
-              profileMenuOpen ? "rotate-90" : ""
-            }`}
-          />
-        </button>
+      <div className="p-3 border-t border-zinc-200/50 dark:border-zinc-800/50">
+        <Menu shadow="md" width={200} position="top-start" offset={10}>
+          <Menu.Target>
+            <UnstyledButton className="flex items-center gap-3 w-full p-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
+              <Avatar 
+                src={profile?.avatar_url || "https://oqhjxepxjzkfunemjvqp.supabase.co/storage/v1/object/public/avatars/user-default.png"} 
+                radius="xl" 
+                size="sm" 
+              />
+              <div className="flex-1 min-w-0 text-left">
+                <Text size="sm" fw={600} truncate c="var(--mantine-color-text)">
+                  {profile?.username || "—"}
+                </Text>
+                <Text size="xs" fw={600} c="dimmed" tt="uppercase">
+                  My account
+                </Text>
+              </div>
+              <IconChevronRight size={16} className="text-zinc-400" />
+            </UnstyledButton>
+          </Menu.Target>
 
-        {/* Popover menu */}
-        {profileMenuOpen && (
-          <div className="absolute bottom-full left-3 right-3 mb-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-xl overflow-hidden z-50">
-            <Link
-              href="/profile"
-              onClick={() => setProfileMenuOpen(false)}
-              className="flex items-center gap-3 px-4 py-3 text-sm font-semibold text-zinc-700 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
-            >
-              <Settings className="w-4 h-4 text-zinc-400" />
+          <Menu.Dropdown>
+            <Menu.Item leftSection={<IconSettings size={14} />} component={Link} href="/profile">
               Profile Settings
-            </Link>
-            <div className="border-t border-zinc-100 dark:border-zinc-800" />
-            <button
-              onClick={() => {
-                setProfileMenuOpen(false);
-                onLogout();
-              }}
-              className="flex items-center gap-3 w-full px-4 py-3 text-sm font-semibold text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors"
-            >
-              <LogOut className="w-4 h-4" />
+            </Menu.Item>
+            <Menu.Divider />
+            <Menu.Item color="red" leftSection={<IconLogout size={14} />} onClick={onLogout}>
               Sign Out
-            </button>
-          </div>
-        )}
+            </Menu.Item>
+          </Menu.Dropdown>
+        </Menu>
       </div>
 
       <ProjectModal
@@ -473,159 +456,39 @@ export default function Sidebar({
         initialTitle={projectModalTitle}
       />
 
-      {/* Archive Project Modal - Portalled */}
-      {projectToArchive && typeof window !== "undefined" && createPortal(
-        <div
-          className="fixed inset-0 z-[203] flex items-center justify-center bg-black/40 backdrop-blur-[2px] p-4"
-          onPointerDown={(e) => e.stopPropagation()}
-        >
-          <div
-            className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl w-full max-w-sm flex flex-col max-h-[calc(100dvh-2rem)] overflow-y-auto gap-4 p-6 cursor-auto"
-            onClick={(e) => e.stopPropagation()}
-            onKeyDown={(e) => {
-              if (e.key === "Escape") setProjectToArchive(null);
-            }}
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Archive className="w-4 h-4 text-amber-500" />
-                <h2 className="font-semibold text-zinc-900 dark:text-zinc-100 text-base">Archive Project</h2>
-              </div>
-              <button
-                onClick={() => setProjectToArchive(null)}
-                className="p-1.5 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            
-            <p className="text-sm text-zinc-500 dark:text-zinc-400 font-medium leading-relaxed">
-              Move <span className="font-semibold text-zinc-900 dark:text-zinc-100">&quot;{projectToArchive.title}&quot;</span> to the archives? You can restore it later if you need to work on it again.
-            </p>
+      <Modal opened={!!projectToArchive} onClose={() => setProjectToArchive(null)} title={<Group gap="xs"><IconArchive size={18} className="text-amber-500"/><Text fw={600}>Archive Project</Text></Group>} centered>
+        <Text size="sm" c="dimmed" mb="lg">
+          Move <Text span fw={600} c="var(--mantine-color-text)">&quot;{projectToArchive?.title}&quot;</Text> to the archives? You can restore it later.
+        </Text>
+        <Group justify="flex-end">
+          <Button variant="subtle" color="gray" onClick={() => setProjectToArchive(null)}>Cancel</Button>
+          <Button color="orange" leftSection={<IconCheck size={16} />} onClick={() => projectToArchive && handleArchive(projectToArchive.id, projectToArchive.title)}>Confirm Archive</Button>
+        </Group>
+      </Modal>
 
-            <div className="flex items-center justify-end gap-2 pt-2">
-              <button
-                onClick={() => setProjectToArchive(null)}
-                className="px-4 py-2 text-xs text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors font-bold cursor-pointer rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-900"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => handleArchive(projectToArchive.id, projectToArchive.title)}
-                className="flex items-center gap-1.5 px-5 py-2 text-xs text-white font-bold bg-amber-500 rounded-lg hover:bg-amber-600 transition-colors cursor-pointer"
-              >
-                <Check className="w-3.5 h-3.5" />
-                Confirm Archive
-              </button>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
+      <Modal opened={!!projectToRestore} onClose={() => setProjectToRestore(null)} title={<Group gap="xs"><IconRotateClockwise size={18} className="text-emerald-500"/><Text fw={600}>Restore Project</Text></Group>} centered>
+        <Text size="sm" c="dimmed" mb="lg">
+          Restore <Text span fw={600} c="var(--mantine-color-text)">&quot;{projectToRestore?.title}&quot;</Text>? It will appear back in your active projects list.
+        </Text>
+        <Group justify="flex-end">
+          <Button variant="subtle" color="gray" onClick={() => setProjectToRestore(null)}>Cancel</Button>
+          <Button color="teal" leftSection={<IconCheck size={16} />} onClick={() => projectToRestore && handleRestore(projectToRestore.id, projectToRestore.title)}>Restore Project</Button>
+        </Group>
+      </Modal>
 
-      {/* Restore Project Modal - Portalled */}
-      {projectToRestore && typeof window !== "undefined" && createPortal(
-        <div
-          className="fixed inset-0 z-[203] flex items-center justify-center bg-black/40 backdrop-blur-[2px] p-4"
-          onPointerDown={(e) => e.stopPropagation()}
-        >
-          <div
-            className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl w-full max-w-sm flex flex-col max-h-[calc(100dvh-2rem)] overflow-y-auto gap-4 p-6 cursor-auto"
-            onClick={(e) => e.stopPropagation()}
-            onKeyDown={(e) => {
-              if (e.key === "Escape") setProjectToRestore(null);
-            }}
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <RotateCcw className="w-4 h-4 text-emerald-500" />
-                <h2 className="font-semibold text-zinc-900 dark:text-zinc-100 text-base">Restore Project</h2>
-              </div>
-              <button
-                onClick={() => setProjectToRestore(null)}
-                className="p-1.5 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            
-            <p className="text-sm text-zinc-500 dark:text-zinc-400 font-medium leading-relaxed">
-              Restore <span className="font-semibold text-zinc-900 dark:text-zinc-100">&quot;{projectToRestore.title}&quot;</span>? It will appear back in your active projects list.
-            </p>
-
-            <div className="flex items-center justify-end gap-2 pt-2">
-              <button
-                onClick={() => setProjectToRestore(null)}
-                className="px-4 py-2 text-xs text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors font-bold cursor-pointer rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-900"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => handleRestore(projectToRestore.id, projectToRestore.title)}
-                className="flex items-center gap-1.5 px-5 py-2 text-xs text-white font-bold bg-emerald-500 rounded-lg hover:bg-emerald-600 transition-colors cursor-pointer"
-              >
-                <Check className="w-3.5 h-3.5" />
-                Restore Project
-              </button>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
-
-      {/* Delete Modal - Portalled */}
-      {projectToDelete && typeof window !== "undefined" && createPortal(
-        <div
-          className="fixed inset-0 z-[203] flex items-center justify-center bg-black/40 backdrop-blur-[2px] p-4"
-          onPointerDown={(e) => e.stopPropagation()}
-        >
-          <div
-            className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl w-full max-w-sm flex flex-col max-h-[calc(100dvh-2rem)] overflow-y-auto gap-4 p-6 cursor-auto"
-            onClick={(e) => e.stopPropagation()}
-            onKeyDown={(e) => {
-              if (e.key === "Escape") setProjectToDelete(null);
-            }}
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Trash2 className="w-4 h-4 text-red-500" />
-                <h2 className="font-semibold text-zinc-900 dark:text-zinc-100 text-base">Delete Project</h2>
-              </div>
-              <button
-                onClick={() => setProjectToDelete(null)}
-                className="p-1.5 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            
-            <p className="text-sm text-zinc-500 dark:text-zinc-400 font-medium leading-relaxed">
-              Are you sure you want to delete this project, including all its columns and tasks? This action <span className="text-zinc-900 dark:text-zinc-100 font-semibold">cannot be undone</span>.
-            </p>
-
-            <div className="flex items-center justify-end gap-2 pt-2">
-              <button
-                onClick={() => setProjectToDelete(null)}
-                className="px-4 py-2 text-xs text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors font-bold cursor-pointer rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-900"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => {
-                  const p = projects.find(proj => proj.id === projectToDelete);
-                  if (p) handleDelete(p.id, p.title);
-                  setProjectToDelete(null);
-                }}
-                className="flex items-center gap-1.5 px-5 py-2 text-xs bg-red-500 text-white font-bold rounded-lg hover:bg-red-600 transition-colors cursor-pointer"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                Delete Project
-              </button>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
+      <Modal opened={!!projectToDelete} onClose={() => setProjectToDelete(null)} title={<Group gap="xs"><IconTrash size={18} className="text-red-500"/><Text fw={600}>Delete Project</Text></Group>} centered>
+        <Text size="sm" c="dimmed" mb="lg">
+          Are you sure you want to delete this project? This action <Text span fw={600} c="var(--mantine-color-text)">cannot be undone</Text>.
+        </Text>
+        <Group justify="flex-end">
+          <Button variant="subtle" color="gray" onClick={() => setProjectToDelete(null)}>Cancel</Button>
+          <Button color="red" leftSection={<IconTrash size={16} />} onClick={() => {
+            const p = projects.find(proj => proj.id === projectToDelete);
+            if (p) handleDelete(p.id, p.title);
+            setProjectToDelete(null);
+          }}>Delete Project</Button>
+        </Group>
+      </Modal>
     </aside>
   );
 }

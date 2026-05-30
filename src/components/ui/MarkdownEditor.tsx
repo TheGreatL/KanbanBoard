@@ -1,21 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback } from "react";
-import { 
-  Heading, 
-  Bold, 
-  Italic, 
-  Code, 
-  Link, 
-  List, 
-  ListOrdered, 
-  CheckSquare, 
-  AtSign, 
-  Image as ImageIcon,
-  RotateCcw,
-  MessageSquare,
-  Strikethrough
-} from "lucide-react";
+import { IconHeading, IconBold, IconItalic, IconCode, IconLink, IconList, IconListNumbers, IconSquareCheck, IconAt, IconPhoto, IconRotateClockwise, IconMessageCircle, IconStrikethrough } from '@tabler/icons-react';
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 
@@ -110,19 +96,19 @@ export default function MarkdownEditor({ value, onChange, placeholder }: Markdow
   };
 
   const toolbarActions = [
-    { icon: Heading, label: "Heading", type: "heading" as const },
-    { icon: Bold, label: "Bold", type: "bold" as const },
-    { icon: Italic, label: "Italic", type: "italic" as const },
-    { icon: Strikethrough, label: "Strikethrough", type: "strikethrough" as const },
-    { icon: Code, label: "Code", type: "code" as const },
-    { icon: Link, label: "Link", type: "link" as const },
-    { icon: List, label: "List", type: "list" as const },
-    { icon: ListOrdered, label: "Ordered List", type: "ordered-list" as const },
-    { icon: CheckSquare, label: "Task List", type: "checklist" as const },
-    { icon: AtSign, label: "Mention", type: "mention" as const },
-    { icon: MessageSquare, label: "Comment", type: "quote" as const },
-    { icon: ImageIcon, label: "Image", type: "image" as const },
-    { icon: RotateCcw, label: "Undo", type: "undo" as const }, 
+    { icon: IconHeading, label: "Heading", type: "heading" as const },
+    { icon: IconBold, label: "Bold", type: "bold" as const },
+    { icon: IconItalic, label: "Italic", type: "italic" as const },
+    { icon: IconStrikethrough, label: "Strikethrough", type: "strikethrough" as const },
+    { icon: IconCode, label: "Code", type: "code" as const },
+    { icon: IconLink, label: "Link", type: "link" as const },
+    { icon: IconList, label: "List", type: "list" as const },
+    { icon: IconListNumbers, label: "Ordered List", type: "ordered-list" as const },
+    { icon: IconSquareCheck, label: "Task List", type: "checklist" as const },
+    { icon: IconAt, label: "Mention", type: "mention" as const },
+    { icon: IconMessageCircle, label: "Comment", type: "quote" as const },
+    { icon: IconPhoto, label: "Image", type: "image" as const },
+    { icon: IconRotateClockwise, label: "Undo", type: "undo" as const }, 
   ];
 
   const renderPreview = (text: string) => {

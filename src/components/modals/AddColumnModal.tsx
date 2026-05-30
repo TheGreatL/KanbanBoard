@@ -1,9 +1,8 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { createPortal } from "react-dom";
-import { X, Columns, Check, Loader2 } from "lucide-react";
-import { Tooltip } from "../ui/Tooltip";
+import { IconColumns, IconCheck, IconLoader2 } from "@tabler/icons-react";
+import { Modal, Button, TextInput, Group, ColorSwatch, Tooltip, Stack, Text } from '@mantine/core';
 
 interface AddColumnModalProps {
   isOpen: boolean;
@@ -49,122 +48,82 @@ export default function AddColumnModal({
     onClose();
   };
 
-  if (!isOpen || typeof window === "undefined") return null;
+  const handleClose = () => {
+    onClose();
+    setNewColumnTitle("");
+    setNewColumnDescription("");
+    setNewColumnColor("zinc");
+  };
 
-  return createPortal(
-    <div
-      className="fixed inset-0 z-[200] overflow-y-auto bg-black/60"
-      onPointerDown={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
+  if (!isOpen && typeof window !== "undefined") return null;
+
+  return (
+    <Modal 
+      opened={isOpen} 
+      onClose={handleClose} 
+      title={
+        <Group gap="xs">
+          <IconColumns size={18} className="text-zinc-500" />
+          <Text fw={600}>Add New Column</Text>
+        </Group>
+      }
+      centered
     >
-      <div className="flex min-h-full items-center justify-center p-4">
-        <div
-          className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl w-full max-w-md flex flex-col max-h-[85vh]"
-        onKeyDown={(e) => {
-          if (e.key === "Escape") {
-            onClose();
-            setNewColumnTitle("");
-            setNewColumnDescription("");
-            setNewColumnColor("zinc");
-          }
-        }}
-      >
-        {/* ── Header (always visible) ── */}
-        <div className="flex items-center justify-between shrink-0 px-6 pt-5 pb-4">
-          <div className="flex items-center gap-2 text-zinc-900 dark:text-zinc-100 font-semibold">
-            <Columns className="w-4 h-4 text-zinc-500" />
-            <h2>Add New Column</h2>
-          </div>
-          <button
-            onClick={() => {
-              onClose();
-              setNewColumnTitle("");
-              setNewColumnDescription("");
-              setNewColumnColor("zinc");
-            }}
-            className="p-1.5 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors cursor-pointer"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-        {/* ── Scrollable body ── */}
-        <div className="flex-1 overflow-y-auto min-h-0 px-6 flex flex-col gap-4">
-          <div className="flex flex-col gap-1.5">
-            <label className="flex items-center gap-1.5 text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase ">
-              Column Name
-            </label>
-            <input
-              ref={columnTitleInputRef}
-              value={newColumnTitle}
-              onChange={(e) => setNewColumnTitle(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") handleSubmit();
-              }}
-              className="w-full px-3 py-2 text-sm bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-zinc-200 dark:focus:ring-zinc-800 transition-all text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 outline-none"
-              placeholder="e.g. In Progress, Done..."
-            />
-          </div>
+      <form onSubmit={handleSubmit}>
+        <Stack gap="md">
+          <TextInput
+            label="Column Name"
+            placeholder="e.g. In Progress, Done..."
+            value={newColumnTitle}
+            onChange={(e) => setNewColumnTitle(e.currentTarget.value)}
+            ref={columnTitleInputRef}
+            required
+            data-autofocus
+          />
 
-          <div className="flex flex-col gap-1.5">
-            <label className="flex items-center gap-1.5 text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase ">
-              Description <span className="text-[10px] font-normal opacity-70">(Optional)</span>
-            </label>
-            <input
-              value={newColumnDescription}
-              onChange={(e) => setNewColumnDescription(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") handleSubmit();
-              }}
-              className="w-full px-3 py-2 text-sm bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-zinc-200 dark:focus:ring-zinc-800 transition-all text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 outline-none"
-              placeholder="e.g. Tasks currently being worked on."
-            />
-          </div>
+          <TextInput
+            label="Description (Optional)"
+            placeholder="e.g. Tasks currently being worked on."
+            value={newColumnDescription}
+            onChange={(e) => setNewColumnDescription(e.currentTarget.value)}
+          />
 
-          <div className="flex flex-col gap-1.5">
-            <label className="flex items-center gap-1.5 text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase ">
-              Theme Color
-            </label>
-            <div className="grid grid-cols-6 gap-2 pt-1">
+          <Stack gap={4}>
+            <Text size="sm" fw={500}>Theme Color</Text>
+            <Group gap="sm">
               {availableColors.map((color) => (
-                  <Tooltip key={color} text={color}>
-                    <button
-                      onClick={() => setNewColumnColor(color)}
-                      className={`w-full aspect-square rounded-full ${dotColorMap[color]} hover:scale-110 transition-transform flex items-center justify-center cursor-pointer ${newColumnColor === color ? 'ring-2 ring-offset-2 ring-zinc-400 dark:ring-zinc-600 dark:ring-offset-zinc-950 shadow-sm' : ''}`}
-                    >
-                      {newColumnColor === color && <Check className="w-3 h-3 text-white" />}
-                    </button>
-                  </Tooltip>
+                <Tooltip key={color} label={color} position="top" withArrow>
+                  <ColorSwatch
+                    component="button"
+                    type="button"
+                    color={`var(--mantine-color-${color}-5)`}
+                    onClick={() => setNewColumnColor(color)}
+                    style={{ color: '#fff', cursor: 'pointer' }}
+                    radius="xl"
+                    className={newColumnColor === color ? 'ring-2 ring-offset-2 ring-zinc-400 dark:ring-zinc-600 dark:ring-offset-zinc-950 shadow-sm scale-110' : 'hover:scale-110 transition-transform'}
+                  >
+                    {newColumnColor === color && <IconCheck size={12} />}
+                  </ColorSwatch>
+                </Tooltip>
               ))}
-            </div>
-          </div>
-        </div>
+            </Group>
+          </Stack>
+        </Stack>
 
-        {/* ── Footer (always visible) ── */}
-        <div className="flex items-center justify-end gap-3 shrink-0 px-6 py-4 border-t border-zinc-100 dark:border-zinc-800">
-          <button
-            onClick={() => {
-              onClose();
-              setNewColumnTitle("");
-              setNewColumnDescription("");
-              setNewColumnColor("zinc");
-            }}
-            className="px-4 py-2 text-sm font-semibold text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 transition-colors cursor-pointer"
-          >
+        <Group justify="flex-end" mt="xl">
+          <Button variant="subtle" color="gray" onClick={handleClose}>
             Cancel
-          </button>
-          <button
-            onClick={() => handleSubmit()}
+          </Button>
+          <Button 
+            type="submit" 
+            color="dark" 
             disabled={isSubmitting || !newColumnTitle.trim()}
-            className="flex items-center gap-2 px-6 py-2 text-sm font-semibold bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 rounded-xl hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+            leftSection={isSubmitting ? <IconLoader2 size={16} className="animate-spin" /> : <IconCheck size={16} />}
           >
-            {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
             Create Column
-          </button>
-        </div>
-        </div>
-      </div>
-    </div>,
-    document.body
+          </Button>
+        </Group>
+      </form>
+    </Modal>
   );
 }

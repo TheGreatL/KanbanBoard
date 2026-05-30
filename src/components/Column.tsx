@@ -1,12 +1,15 @@
+'use client';
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Plus, Trash2, X, GripVertical, LayoutList, AlignLeft, Check, Archive, ChevronRight } from "lucide-react";
+// import { Plus, Trash2, X, GripVertical, LayoutList, AlignLeft, Check, Archive, ChevronRight } from "lucide-react";
 import TaskCard, { Task } from "./TaskCard";
 import { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
 import { Tooltip } from "./ui/Tooltip";
+import { IconGripVertical, IconLayoutList, IconPlus,  IconTrash, IconX } from "@tabler/icons-react";
+import { CheckIcon } from "@mantine/core";
 
 export interface ColumnType {
   id: string;
@@ -115,6 +118,7 @@ export default function Column({
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editTitle, setEditTitle] = useState(column.title);
   const [editDescription, setEditDescription] = useState(column.description || "");
+  const [editColor, setEditColor] = useState(column.color);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
   const { setNodeRef, attributes, listeners, transform, transition, isDragging } = useSortable({
@@ -155,6 +159,7 @@ export default function Column({
     if (!trimmedTitle) {
       setEditTitle(column.title);
       setEditDescription(column.description || "");
+      setEditColor(column.color);
       setIsEditingTitle(false);
       return;
     }
@@ -162,6 +167,11 @@ export default function Column({
     // Only update if something actually changed to avoid unnecessary DB calls
     const titleChanged = trimmedTitle !== column.title;
     const descChanged = editDescription !== (column.description || "");
+    const colorChanged = editColor !== column.color;
+    
+    if (colorChanged && updateColumnColor) {
+      await updateColumnColor(column.id, editColor);
+    }
     
     if ((titleChanged || descChanged) && updateColumnDetails) {
       await updateColumnDetails(column.id, trimmedTitle, editDescription || null);
@@ -210,7 +220,7 @@ export default function Column({
                 {...listeners}
                 className="text-zinc-300 dark:text-zinc-700 hover:text-zinc-500 dark:hover:text-zinc-400 cursor-grab active:cursor-grabbing shrink-0 flex items-center transition-colors"
               >
-                <GripVertical className="w-4 h-4" />
+                <IconGripVertical className="w-4 h-4" />
               </div>
             </Tooltip>
           )}
@@ -351,7 +361,7 @@ export default function Column({
                   onMouseDown={(e) => e.preventDefault()}
                   className="shrink-0 lg:invisible lg:opacity-0 lg:group-hover/header:visible lg:group-hover/header:opacity-100 text-zinc-400 hover:text-red-500 transition-all p-1 rounded-md hover:bg-zinc-200 dark:hover:bg-zinc-800 cursor-pointer"
                 >
-                  <Trash2 className="w-4 h-4" />
+                  <IconTrash className="w-4 h-4" />
                 </button>
               </Tooltip>
           )}
@@ -388,7 +398,7 @@ export default function Column({
 
           {tasks.length === 0 && remoteDragging.length === 0 && (
             <div className="flex flex-col items-center justify-center py-6 text-zinc-400 dark:text-zinc-600 gap-1.5">
-              <LayoutList className="w-5 h-5 opacity-50" />
+              <IconLayoutList className="w-5 h-5 opacity-50" />
               <p className="text-xs">No tasks yet</p>
             </div>
           )}
@@ -405,7 +415,7 @@ export default function Column({
               className="flex items-center gap-2 w-full p-2 text-sm text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-200/50 dark:hover:bg-zinc-800/50 rounded-xl transition-colors cursor-pointer group/add"
             >
               <div className="w-6 h-6 rounded-lg bg-white dark:bg-zinc-800 shadow-sm flex items-center justify-center group-hover/add:scale-110 transition-transform">
-                <Plus className="w-3.5 h-3.5" />
+                <IconPlus className="w-3.5 h-3.5" />
               </div>
               <span className="font-semibold">Add task</span>
             </button>
@@ -428,14 +438,14 @@ export default function Column({
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Trash2 className="w-4 h-4 text-amber-400" />
+                <IconTrash className="w-4 h-4 text-amber-400" />
                 <h2 className="font-semibold text-zinc-900 dark:text-zinc-100 text-base">Archive Column</h2>
               </div>
               <button
                 onClick={() => setIsDeleteDialogOpen(false)}
                 className="p-1.5 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors cursor-pointer"
               >
-                <X className="w-4 h-4" />
+                <IconX className="w-4 h-4" />
               </button>
             </div>
 
@@ -457,7 +467,7 @@ export default function Column({
                 }}
                 className="flex items-center gap-1.5 px-5 py-2 text-xs bg-amber-500 text-white font-bold rounded-lg hover:bg-amber-600 transition-colors cursor-pointer"
               >
-                <Check className="w-3.5 h-3.5" />
+                <CheckIcon className="w-3.5 h-3.5" />
                 Confirm Archive
               </button>
             </div>

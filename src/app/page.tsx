@@ -3,7 +3,7 @@
 import {useEffect, useState, useCallback} from 'react';
 import {useRouter} from 'next/navigation';
 import {supabase} from '@/lib/supabase';
-import {Loader2, LayoutDashboard, FolderKanban, Menu} from 'lucide-react';
+import { IconLoader2, IconLayoutDashboard, IconFolder, IconMenu2 } from '@tabler/icons-react';
 import Sidebar, {Project} from '@/components/Sidebar';
 import {cn} from '@/lib/utils';
 import dynamic from 'next/dynamic';
@@ -187,13 +187,13 @@ export default function Home() {
 			<div className='min-h-screen flex flex-col items-center justify-center bg-white dark:bg-zinc-950 animate-in fade-in duration-700'>
 				<div className='mb-8'>
 					<div className='w-12 h-12 bg-blue-500 rounded-lg flex items-center justify-center shadow-sm'>
-						<FolderKanban className='w-6 h-6 text-white' />
+						<IconFolder className='w-6 h-6 text-white' />
 					</div>
 				</div>
 				<div className='flex flex-col items-center gap-2'>
 					<h2 className='text-lg font-semibold text-zinc-900 dark:text-zinc-100'>Kanban</h2>
 					<div className='flex items-center gap-2 text-zinc-400 dark:text-zinc-500 text-sm font-medium'>
-						<Loader2 className='w-4 h-4 animate-spin' />
+						<IconLoader2 className='w-4 h-4 animate-spin' />
 						<span>Synchronizing your workspace...</span>
 					</div>
 				</div>
@@ -244,7 +244,7 @@ export default function Home() {
 							className="w-10 h-10 rounded-xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 flex items-center justify-center hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors shadow-sm"
 							aria-label="Open Menu"
 						>
-							<Menu className="w-5 h-5 text-zinc-600 dark:text-zinc-400" />
+							<IconMenu2 className="w-5 h-5 text-zinc-600 dark:text-zinc-400" />
 						</button>
 					</div>
 				)}
@@ -255,7 +255,7 @@ export default function Home() {
 					</div>
 				:	<div className='flex-1 flex flex-col items-center justify-center p-8 text-center max-w-md mx-auto'>
 						<div className='w-12 h-12 bg-zinc-100 dark:bg-zinc-900 rounded-lg flex items-center justify-center mb-6 border border-zinc-200 dark:border-zinc-800 shadow-sm'>
-							<LayoutDashboard className='w-6 h-6 text-zinc-400' />
+							<IconLayoutDashboard className='w-6 h-6 text-zinc-400' />
 						</div>
 						<h2 className='text-lg font-semibold text-zinc-900 dark:text-zinc-100 mb-2'>No projects yet</h2>
 						<p className='text-zinc-500 dark:text-zinc-400 mb-8 text-sm'>

@@ -3,7 +3,7 @@
 import {useState} from 'react';
 import {supabase} from '@/lib/supabase';
 import {useRouter} from 'next/navigation';
-import {Loader2} from 'lucide-react';
+import { IconLoader2 } from '@tabler/icons-react';
 import {useToast} from '@/components/ui/Toast';
 
 export default function UpdatePasswordPage() {
@@ -113,7 +113,7 @@ export default function UpdatePasswordPage() {
 							disabled={loading}
 							className='w-full py-2.5 px-4 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-50 dark:hover:bg-zinc-200 text-white dark:text-zinc-900 font-medium rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center'>
 							{loading ?
-								<Loader2 className='w-5 h-5 animate-spin' />
+								<IconLoader2 className='w-5 h-5 animate-spin' />
 							:	'Update Password'}
 						</button>
 					</form>
