@@ -233,15 +233,23 @@ export default function TaskCard({ task, columnColor = "zinc", deleteTask, updat
       {/* Edit Modal — portalled to document.body */}
       {isEditing && typeof window !== "undefined" && createPortal(
         <div
-          className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 backdrop-blur-[2px] px-4"
-          onPointerDown={(e) => e.stopPropagation()}
+          className="fixed inset-0 z-[200] overflow-y-auto bg-black/40 backdrop-blur-[2px]"
+          onPointerDown={(e) => {
+            if (e.target === e.currentTarget) {
+              setIsEditing(false);
+              setEditTitle(task.title ?? "");
+              setEditContent(task.content ?? "");
+            }
+          }}
         >
+          <div className="flex min-h-full items-center justify-center p-4">
           <div
             ref={modalRef}
-            className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl w-full max-w-md flex flex-col gap-4 p-6"
+            className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl w-full max-w-md flex flex-col max-h-[85vh]"
             onKeyDown={handleEditKeyDown}
           >
-            <div className="flex items-center justify-between">
+            {/* ── Header (always visible) ── */}
+            <div className="flex items-center justify-between shrink-0 px-6 pt-5 pb-4">
               <div className="flex items-center gap-2">
                 <Pencil className="w-4 h-4 text-zinc-400" />
                 <h2 className="font-semibold text-zinc-900 dark:text-zinc-100 text-base">Edit Task</h2>
@@ -258,7 +266,8 @@ export default function TaskCard({ task, columnColor = "zinc", deleteTask, updat
               </button>
             </div>
 
-            <div className="flex flex-col gap-3">
+            {/* ── Scrollable body ── */}
+            <div className="flex-1 overflow-y-auto min-h-0 px-6 flex flex-col gap-3">
               <div className="flex flex-col gap-1">
                 <label className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase ">
                   Title
@@ -288,7 +297,8 @@ export default function TaskCard({ task, columnColor = "zinc", deleteTask, updat
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-2 pt-1">
+            {/* ── Footer (always visible) ── */}
+            <div className="flex items-center justify-end gap-2 shrink-0 px-6 py-4 border-t border-zinc-100 dark:border-zinc-800">
               <button
                 onClick={() => {
                   setIsEditing(false);
@@ -308,6 +318,7 @@ export default function TaskCard({ task, columnColor = "zinc", deleteTask, updat
               </button>
             </div>
           </div>
+          </div>
         </div>,
         document.body
       )}
@@ -315,11 +326,14 @@ export default function TaskCard({ task, columnColor = "zinc", deleteTask, updat
       {/* Restore Task Modal */}
       {isRestoreDialogOpen && typeof window !== "undefined" && createPortal(
         <div
-          className="fixed inset-0 z-[202] flex items-center justify-center bg-black/40 backdrop-blur-[2px] px-4"
-          onPointerDown={(e) => e.stopPropagation()}
+          className="fixed inset-0 z-[202] overflow-y-auto bg-black/40 backdrop-blur-[2px]"
+          onPointerDown={(e) => {
+            if (e.target === e.currentTarget) setIsRestoreDialogOpen(false);
+          }}
         >
+          <div className="flex min-h-full items-center justify-center p-4">
           <div
-            className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl w-full max-w-sm flex flex-col gap-4 p-6 cursor-auto"
+            className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl w-full max-w-sm flex flex-col gap-4 p-6 cursor-auto max-h-[85vh]"
             onClick={(e) => e.stopPropagation()}
             onKeyDown={(e) => {
               if (e.key === "Escape") setIsRestoreDialogOpen(false);
@@ -363,6 +377,7 @@ export default function TaskCard({ task, columnColor = "zinc", deleteTask, updat
               </button>
             </div>
           </div>
+          </div>
         </div>,
         document.body
       )}
@@ -370,11 +385,14 @@ export default function TaskCard({ task, columnColor = "zinc", deleteTask, updat
       {/* Confirmation Modal — Context Aware (Archive vs Permanent Delete) */}
       {isDeleteDialogOpen && typeof window !== "undefined" && createPortal(
         <div
-          className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 backdrop-blur-[2px] px-4"
-          onPointerDown={(e) => e.stopPropagation()}
+          className="fixed inset-0 z-[200] overflow-y-auto bg-black/40 backdrop-blur-[2px]"
+          onPointerDown={(e) => {
+            if (e.target === e.currentTarget) setIsDeleteDialogOpen(false);
+          }}
         >
+          <div className="flex min-h-full items-center justify-center p-4">
           <div
-            className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl w-full max-w-sm flex flex-col gap-4 p-6"
+            className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl w-full max-w-sm flex flex-col gap-4 p-6 max-h-[85vh]"
             onKeyDown={(e) => {
               if (e.key === "Escape") setIsDeleteDialogOpen(false);
             }}
@@ -428,6 +446,7 @@ export default function TaskCard({ task, columnColor = "zinc", deleteTask, updat
                 {isArchived ? "Delete Permanently" : "Confirm Archive"}
               </button>
             </div>
+          </div>
           </div>
         </div>,
         document.body

@@ -55,12 +55,15 @@ export default function AddTaskModal({
   if (!isOpen || typeof window === "undefined") return null;
 
   return createPortal(
+    <div
+      className="fixed inset-0 z-200 overflow-y-auto bg-black/40 backdrop-blur-[2px]"
+      onPointerDown={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div className="flex min-h-full items-center justify-center p-4">
       <div
-        className="fixed inset-0 z-200 flex items-center justify-center bg-black/40 backdrop-blur-[2px] px-4"
-        onPointerDown={(e) => e.stopPropagation()}
-      >
-      <div
-        className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl w-full max-w-md flex flex-col gap-4 p-6"
+        className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl w-full max-w-md flex flex-col max-h-[85vh]"
         onKeyDown={(e) => {
           if (e.key === "Escape") {
             onClose();
@@ -69,8 +72,8 @@ export default function AddTaskModal({
           }
         }}
       >
-        {/* Modal header */}
-        <div className="flex items-center justify-between">
+        {/* ── Header (always visible) ── */}
+        <div className="flex items-center justify-between shrink-0 px-6 pt-5 pb-4">
           <div className="flex items-center gap-2 text-zinc-900 dark:text-zinc-100 font-semibold">
             <Plus className="w-4 h-4" />
             <h2>Create New Task</h2>
@@ -88,10 +91,10 @@ export default function AddTaskModal({
           </button>
         </div>
 
-        {/* Fields */}
-        <div className="flex flex-col gap-4">
+        {/* ── Scrollable body ── */}
+        <div className="flex-1 overflow-y-auto min-h-0 px-6 flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
-            <label className="flex items-center gap-1.5 text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase ">
+            <label className="flex items-center gap-1.5 text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase">
               Select Column
             </label>
             <select
@@ -109,7 +112,7 @@ export default function AddTaskModal({
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label className="flex items-center gap-1.5 text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase ">
+            <label className="flex items-center gap-1.5 text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase">
               <LayoutList className="w-3 h-3" />
               Task Title
             </label>
@@ -122,8 +125,8 @@ export default function AddTaskModal({
             />
           </div>
 
-          <div className="flex flex-col gap-1.5">
-            <label className="flex items-center gap-1.5 text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase ">
+          <div className="flex flex-col gap-1.5 pb-2">
+            <label className="flex items-center gap-1.5 text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase">
               <AlignLeft className="w-3 h-3" />
               Description
             </label>
@@ -135,8 +138,8 @@ export default function AddTaskModal({
           </div>
         </div>
 
-        {/* Actions */}
-        <div className="flex items-center justify-end gap-3 mt-2">
+        {/* ── Footer (always visible) ── */}
+        <div className="flex items-center justify-end gap-3 shrink-0 px-6 py-4 border-t border-zinc-100 dark:border-zinc-800">
           <button
             onClick={() => {
               onClose();
@@ -155,6 +158,7 @@ export default function AddTaskModal({
             {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
             Create Task
           </button>
+        </div>
         </div>
       </div>
     </div>,

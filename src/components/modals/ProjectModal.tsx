@@ -40,13 +40,12 @@ export default function ProjectModal({
     e?.preventDefault();
     const trimTitle = title.trim();
     if (!trimTitle) return;
-
     setIsSubmitting(true);
     try {
       await onSubmit(trimTitle, template);
       onClose();
-    } catch (err) {
-      // Error handling is managed by the parent via toast
+    } catch {
+      // errors handled by parent via toast
     } finally {
       setIsSubmitting(false);
     }
@@ -57,95 +56,102 @@ export default function ProjectModal({
   const isEdit = mode === "edit";
 
   return createPortal(
+    /* Backdrop — scrollable so modal never clips on any screen size */
     <div
-      className="fixed inset-0 z-[202] flex items-center justify-center bg-black/40 backdrop-blur-[2px] px-4"
-      onPointerDown={(e) => e.stopPropagation()}
+      className="fixed inset-0 z-[202] overflow-y-auto bg-black/40 backdrop-blur-[2px]"
+      onPointerDown={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
     >
-      <div
-        className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl w-full max-w-sm flex flex-col gap-4 p-6"
-        onKeyDown={(e) => {
-          if (e.key === "Escape") onClose();
-        }}
-      >
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 text-zinc-900 dark:text-zinc-100 font-semibold">
-            {isEdit ? <Pencil className="w-4 h-4 text-blue-500" /> : <Plus className="w-4 h-4 text-zinc-500" />}
-            <h2>{isEdit ? "Rename Project" : "Create New Project"}</h2>
-          </div>
-          <button
-            onClick={onClose}
-            className="p-1.5 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors cursor-pointer"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-
-        <div className="flex flex-col gap-1.5">
-          <label className="flex items-center gap-1.5 text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase ">
-            Project Name
-          </label>
-          <div className="relative">
-            <div className="absolute left-3 top-1/2 -translate-y-1/2">
-              <FolderKanban className="w-4 h-4 text-zinc-400" />
+      {/* Centering wrapper — fills the scrollable area */}
+      <div className="flex min-h-full items-center justify-center p-4">
+        {/* Panel — capped height with internal scroll */}
+        <div
+          className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl w-full max-w-sm flex flex-col max-h-[85vh]"
+          onPointerDown={(e) => e.stopPropagation()}
+          onKeyDown={(e) => { if (e.key === "Escape") onClose(); }}
+        >
+          {/* ── Header — always visible ── */}
+          <div className="flex items-center justify-between shrink-0 px-6 pt-5 pb-4">
+            <div className="flex items-center gap-2 text-zinc-900 dark:text-zinc-100 font-semibold">
+              {isEdit ? <Pencil className="w-4 h-4 text-blue-500" /> : <Plus className="w-4 h-4 text-zinc-500" />}
+              <h2>{isEdit ? "Rename Project" : "Create New Project"}</h2>
             </div>
-            <input
-              ref={inputRef}
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") handleSubmit();
-              }}
-              className="w-full pl-10 pr-4 py-2 text-sm bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-zinc-200 dark:focus:ring-zinc-800 transition-all text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 outline-none"
-              placeholder="e.g. Design System, App Launch..."
-            />
+            <button
+              onClick={onClose}
+              className="p-1.5 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
           </div>
-        </div>
 
-        {!isEdit && (
-          <div className="flex flex-col gap-2 mt-2">
-            <label className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase ">
-              Project Template
-            </label>
-            <div className="flex flex-col gap-3 max-h-[400px] overflow-y-auto p-2">
-              {PROJECT_TEMPLATES.map((tmpl) => (
-                <button
-                  key={tmpl.id}
-                  type="button"
-                  onClick={() => setTemplate(tmpl.id)}
-                  className={`flex flex-col items-start text-left p-3 rounded-xl border transition-all ${
-                    template === tmpl.id
-                      ? "border-zinc-900 bg-zinc-50 text-zinc-900 dark:border-zinc-100 dark:bg-zinc-900 dark:text-white ring-1 ring-zinc-900 dark:ring-zinc-100"
-                      : "border-zinc-200 hover:border-zinc-300 text-zinc-600 dark:border-zinc-800 dark:hover:border-zinc-700 dark:text-zinc-400"
-                  }`}
-                >
-                  <span className="font-semibold text-sm mb-1">{tmpl.name}</span>
-                  <span className="text-xs opacity-90 font-medium text-zinc-800 dark:text-zinc-200 block mb-1">
-                    {tmpl.description}
-                  </span>
-                  <span className="text-[10px] opacity-70 leading-tight">
-                    {tmpl.bestFor}
-                  </span>
-                </button>
-              ))}
+          {/* ── Scrollable body ── */}
+          <div className="flex-1 overflow-y-auto min-h-0 px-6 flex flex-col gap-4">
+            <div className="flex flex-col gap-1.5">
+              <label className="flex items-center gap-1.5 text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase">
+                Project Name
+              </label>
+              <div className="relative">
+                <div className="absolute left-3 top-1/2 -translate-y-1/2">
+                  <FolderKanban className="w-4 h-4 text-zinc-400" />
+                </div>
+                <input
+                  ref={inputRef}
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") handleSubmit(); }}
+                  className="w-full pl-10 pr-4 py-2 text-sm bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-zinc-200 dark:focus:ring-zinc-800 transition-all text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 outline-none"
+                  placeholder="e.g. Design System, App Launch..."
+                />
+              </div>
             </div>
-          </div>
-        )}
 
-        <div className="flex items-center justify-end gap-3 mt-2">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 text-sm font-semibold text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 transition-colors cursor-pointer"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={() => handleSubmit()}
-            disabled={isSubmitting || !title.trim() || (isEdit && title.trim() === initialTitle)}
-            className="flex items-center gap-2 px-6 py-2 text-sm font-bold bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 rounded-xl hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-          >
-            {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-            {isEdit ? "Save Changes" : "Create Project"}
-          </button>
+            {!isEdit && (
+              <div className="flex flex-col gap-2">
+                <label className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase">
+                  Project Template
+                </label>
+                <div className="flex flex-col gap-3 pb-2">
+                  {PROJECT_TEMPLATES.map((tmpl) => (
+                    <button
+                      key={tmpl.id}
+                      type="button"
+                      onClick={() => setTemplate(tmpl.id)}
+                      className={`flex flex-col items-start text-left p-3 rounded-xl border transition-all ${
+                        template === tmpl.id
+                          ? "border-zinc-900 bg-zinc-50 text-zinc-900 dark:border-zinc-100 dark:bg-zinc-900 dark:text-white ring-1 ring-zinc-900 dark:ring-zinc-100"
+                          : "border-zinc-200 hover:border-zinc-300 text-zinc-600 dark:border-zinc-800 dark:hover:border-zinc-700 dark:text-zinc-400"
+                      }`}
+                    >
+                      <span className="font-semibold text-sm mb-1">{tmpl.name}</span>
+                      <span className="text-xs opacity-90 font-medium text-zinc-800 dark:text-zinc-200 block mb-1">
+                        {tmpl.description}
+                      </span>
+                      <span className="text-[10px] opacity-70 leading-tight">{tmpl.bestFor}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* ── Footer — always visible ── */}
+          <div className="flex items-center justify-end gap-3 shrink-0 px-6 py-4 border-t border-zinc-100 dark:border-zinc-800">
+            <button
+              onClick={onClose}
+              className="px-4 py-2 text-sm font-semibold text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 transition-colors cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => handleSubmit()}
+              disabled={isSubmitting || !title.trim() || (isEdit && title.trim() === initialTitle)}
+              className="flex items-center gap-2 px-6 py-2 text-sm font-bold bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 rounded-xl hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+            >
+              {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+              {isEdit ? "Save Changes" : "Create Project"}
+            </button>
+          </div>
         </div>
       </div>
     </div>,

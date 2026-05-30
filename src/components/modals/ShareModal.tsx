@@ -176,15 +176,18 @@ export default function ShareModal({isOpen, onClose, projectId, currentUserId}: 
 
 	return createPortal(
 		<div
-			className='fixed inset-0 z-[200] flex items-center justify-center bg-black/40 backdrop-blur-[2px] px-4'
-			onPointerDown={(e) => e.stopPropagation()}>
+			className='fixed inset-0 z-[200] overflow-y-auto bg-black/40 backdrop-blur-[2px]'
+			onPointerDown={(e) => {
+				if (e.target === e.currentTarget) onClose();
+			}}>
+			<div className='flex min-h-full items-center justify-center p-4'>
 			<div
-				className='bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl w-full max-w-md min-h-[480px] flex flex-col gap-4 p-6'
+				className='bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl w-full max-w-md flex flex-col max-h-[85vh] min-h-[280px]'
 				onKeyDown={(e) => {
 					if (e.key === 'Escape') onClose();
 				}}>
-				{/* Header */}
-				<div className='flex items-center justify-between'>
+				{/* ── Header (always visible) ── */}
+				<div className='flex items-center justify-between shrink-0 px-6 pt-5 pb-4'>
 					<div className='flex items-center gap-2 text-zinc-900 dark:text-zinc-100 font-semibold'>
 						<Share2 className='w-4 h-4 text-zinc-500' />
 						<h2>Share Project</h2>
@@ -196,6 +199,9 @@ export default function ShareModal({isOpen, onClose, projectId, currentUserId}: 
 						<X className='w-4 h-4' />
 					</button>
 				</div>
+
+				{/* ── Scrollable body ── */}
+				<div className='flex-1 overflow-y-auto min-h-0 px-6 pb-6 flex flex-col gap-4'>
 
 				{/* Invite Section */}
 				<div className='flex flex-col gap-3'>
@@ -314,6 +320,8 @@ export default function ShareModal({isOpen, onClose, projectId, currentUserId}: 
 						{projectMembers.length === 0 && <p className='text-xs text-zinc-500 italic p-2 text-center'>No other members yet.</p>}
 					</div>
 				</div>
+				</div>
+			</div>
 			</div>
 		</div>,
 		document.body,

@@ -416,11 +416,11 @@ export default function Column({
       {/* Archive Column Modal — portalled to document.body */}
       {isDeleteDialogOpen && typeof window !== "undefined" && createPortal(
         <div
-          className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 backdrop-blur-[2px] px-4"
+          className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 backdrop-blur-[2px] p-4"
           onPointerDown={(e) => e.stopPropagation()}
         >
           <div
-            className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl w-full max-w-sm flex flex-col gap-4 p-6 cursor-auto"
+            className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl w-full max-w-sm flex flex-col max-h-[calc(100dvh-2rem)] overflow-y-auto gap-4 p-6 cursor-auto"
             onClick={(e) => e.stopPropagation()}
             onKeyDown={(e) => {
               if (e.key === "Escape") setIsDeleteDialogOpen(false);
