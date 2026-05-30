@@ -153,7 +153,7 @@ export default function TaskCard({ task, columnColor = "zinc", deleteTask, updat
         {/* Card content */}
         <div className="flex flex-col gap-1.5 p-3 pl-1 flex-1 min-w-0">
           {task.title && (
-            <p className="font-bold text-zinc-900 dark:text-zinc-100 text-sm leading-snug break-words ">
+            <p className="font-semibold text-zinc-900 dark:text-zinc-100 text-sm leading-snug break-words">
               {task.title}
             </p>
           )}
@@ -233,7 +233,7 @@ export default function TaskCard({ task, columnColor = "zinc", deleteTask, updat
       {/* Edit Modal — portalled to document.body */}
       {isEditing && typeof window !== "undefined" && createPortal(
         <div
-          className="fixed inset-0 z-[200] overflow-y-auto bg-black/40 backdrop-blur-[2px]"
+          className="fixed inset-0 z-[200] overflow-y-auto bg-black/60"
           onPointerDown={(e) => {
             if (e.target === e.currentTarget) {
               setIsEditing(false);
@@ -326,7 +326,7 @@ export default function TaskCard({ task, columnColor = "zinc", deleteTask, updat
       {/* Restore Task Modal */}
       {isRestoreDialogOpen && typeof window !== "undefined" && createPortal(
         <div
-          className="fixed inset-0 z-[202] overflow-y-auto bg-black/40 backdrop-blur-[2px]"
+          className="fixed inset-0 z-[202] overflow-y-auto bg-black/60"
           onPointerDown={(e) => {
             if (e.target === e.currentTarget) setIsRestoreDialogOpen(false);
           }}
@@ -353,7 +353,7 @@ export default function TaskCard({ task, columnColor = "zinc", deleteTask, updat
             </div>
             
             <p className="text-sm text-zinc-500 dark:text-zinc-400 font-medium leading-relaxed">
-              Restore <span className="font-bold text-zinc-900 dark:text-zinc-100">"{task.title}"</span> to its original column?
+              Restore <span className="font-semibold text-zinc-900 dark:text-zinc-100">"{task.title}"</span> to its original column?
             </p>
 
             <div className="flex items-center justify-end gap-2 pt-2">
@@ -385,7 +385,7 @@ export default function TaskCard({ task, columnColor = "zinc", deleteTask, updat
       {/* Confirmation Modal — Context Aware (Archive vs Permanent Delete) */}
       {isDeleteDialogOpen && typeof window !== "undefined" && createPortal(
         <div
-          className="fixed inset-0 z-[200] overflow-y-auto bg-black/40 backdrop-blur-[2px]"
+          className="fixed inset-0 z-[200] overflow-y-auto bg-black/60"
           onPointerDown={(e) => {
             if (e.target === e.currentTarget) setIsDeleteDialogOpen(false);
           }}
@@ -418,9 +418,9 @@ export default function TaskCard({ task, columnColor = "zinc", deleteTask, updat
 
             <p className="text-sm text-zinc-500 dark:text-zinc-400 font-medium leading-relaxed">
               {isArchived ? (
-                <>Are you sure you want to permanently delete <span className="font-bold text-zinc-900 dark:text-zinc-100">"{task.title}"</span>? This action cannot be undone.</>
+                <>Are you sure you want to permanently delete <span className="font-semibold text-zinc-900 dark:text-zinc-100">"{task.title}"</span>? This action cannot be undone.</>
               ) : (
-                <>Move <span className="font-bold text-zinc-900 dark:text-zinc-100">"{task.title}"</span> to the archive? You can restore it anytime from the archive pool.</>
+                <>Move <span className="font-semibold text-zinc-900 dark:text-zinc-100">"{task.title}"</span> to the archive? You can restore it anytime from the archive pool.</>
               )}
             </p>
 

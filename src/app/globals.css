@@ -31,11 +31,7 @@
 	--border: #e4e4e7;
 	--input: #e4e4e7;
 	--ring: #3b82f6;
-	--radius: 0.75rem;
-
-	/* Glassmorphism tokens */
-	--glass-bg: rgba(255, 255, 255, 0.7);
-	--glass-border: rgba(228, 228, 231, 0.5);
+	--radius: 0.5rem;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -55,10 +51,6 @@
 		--border: #27272a;
 		--input: #27272a;
 		--ring: #3b82f6;
-
-		/* Glassmorphism tokens dark */
-		--glass-bg: rgba(9, 9, 11, 0.7);
-		--glass-border: rgba(39, 39, 42, 0.5);
 	}
 }
 
@@ -69,11 +61,7 @@ body {
 	overflow-x: hidden;
 }
 
-@utility glass {
-	background: var(--glass-bg);
-	backdrop-filter: blur(12px);
-	border: 1px solid var(--glass-border);
-}
+
 
 @utility hide-scrollbar {
 	-ms-overflow-style: none; /* IE and Edge */

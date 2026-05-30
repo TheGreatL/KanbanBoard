@@ -43,7 +43,7 @@ function ZoomControls() {
 	});
 
 	return (
-		<div className='absolute top-auto bottom-6 right-6 flex items-center gap-1 glass rounded-2xl p-1.5 shadow-xl z-50 no-pan animate-in slide-in-from-bottom-4 duration-500'>
+		<div className='absolute top-auto bottom-6 right-6 flex items-center gap-1 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-1.5 shadow-sm z-50 no-pan animate-in slide-in-from-bottom-4 duration-500'>
 			<Tooltip text='Zoom Out'>
 				<button
 					onClick={() => zoomOut(0.2)}
@@ -69,7 +69,7 @@ function ZoomControls() {
 			<div className='hidden lg:flex items-center'>
 				<div className='w-px h-6 bg-zinc-200/50 dark:bg-zinc-800/50 mx-1' />
 				<div className='px-3 py-2 text-zinc-500 flex items-center justify-center min-w-[60px]'>
-					<span className='text-xs font-bold tabular-nums text-zinc-400 dark:text-zinc-500'>{displayScale}%</span>
+					<span className='text-xs font-semibold tabular-nums text-zinc-400 dark:text-zinc-500'>{displayScale}%</span>
 				</div>
 			</div>
 		</div>

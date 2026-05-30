@@ -328,7 +328,7 @@ export default function Sidebar({
   return (
     <aside 
       className={cn(
-        "border-r border-zinc-200/50 dark:border-zinc-800/50 glass flex flex-col h-full shrink-0 shadow-xl lg:shadow-none relative transition-[width] duration-75 lg:transition-none",
+        "border-r border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50 flex flex-col h-full shrink-0 shadow-sm relative transition-[width] duration-75 lg:transition-none",
         !isDesktop ? "w-72" : ""
       )}
       style={{ width: isDesktop ? sidebarWidth : undefined }}
@@ -339,10 +339,10 @@ export default function Sidebar({
       />
       <div className="p-4 flex items-center justify-between border-b border-zinc-200/50 dark:border-zinc-800/50">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-blue-500 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20">
+          <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center shadow-sm">
             <FolderKanban className="w-4 h-4 text-white" />
           </div>
-          <h1 className="text-base font-bold text-zinc-900 dark:text-zinc-100 ">Kanban</h1>
+          <h1 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">Kanban</h1>
         </div>
         {onClose && (
           <button
@@ -425,7 +425,7 @@ export default function Sidebar({
             />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-bold text-zinc-900 dark:text-zinc-100 truncate leading-tight">
+            <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 truncate leading-tight">
               {profile?.username || "—"}
             </p>
             <p className="text-[10px] font-semibold text-zinc-400 uppercase ">
@@ -489,7 +489,7 @@ export default function Sidebar({
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Archive className="w-4 h-4 text-amber-500" />
-                <h2 className="font-bold text-zinc-900 dark:text-zinc-100 text-base">Archive Project</h2>
+                <h2 className="font-semibold text-zinc-900 dark:text-zinc-100 text-base">Archive Project</h2>
               </div>
               <button
                 onClick={() => setProjectToArchive(null)}
@@ -500,7 +500,7 @@ export default function Sidebar({
             </div>
             
             <p className="text-sm text-zinc-500 dark:text-zinc-400 font-medium leading-relaxed">
-              Move <span className="font-bold text-zinc-900 dark:text-zinc-100">&quot;{projectToArchive.title}&quot;</span> to the archives? You can restore it later if you need to work on it again.
+              Move <span className="font-semibold text-zinc-900 dark:text-zinc-100">&quot;{projectToArchive.title}&quot;</span> to the archives? You can restore it later if you need to work on it again.
             </p>
 
             <div className="flex items-center justify-end gap-2 pt-2">
@@ -539,7 +539,7 @@ export default function Sidebar({
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <RotateCcw className="w-4 h-4 text-emerald-500" />
-                <h2 className="font-bold text-zinc-900 dark:text-zinc-100 text-base">Restore Project</h2>
+                <h2 className="font-semibold text-zinc-900 dark:text-zinc-100 text-base">Restore Project</h2>
               </div>
               <button
                 onClick={() => setProjectToRestore(null)}
@@ -550,7 +550,7 @@ export default function Sidebar({
             </div>
             
             <p className="text-sm text-zinc-500 dark:text-zinc-400 font-medium leading-relaxed">
-              Restore <span className="font-bold text-zinc-900 dark:text-zinc-100">&quot;{projectToRestore.title}&quot;</span>? It will appear back in your active projects list.
+              Restore <span className="font-semibold text-zinc-900 dark:text-zinc-100">&quot;{projectToRestore.title}&quot;</span>? It will appear back in your active projects list.
             </p>
 
             <div className="flex items-center justify-end gap-2 pt-2">
@@ -589,7 +589,7 @@ export default function Sidebar({
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Trash2 className="w-4 h-4 text-red-500" />
-                <h2 className="font-bold text-zinc-900 dark:text-zinc-100 text-base">Delete Project</h2>
+                <h2 className="font-semibold text-zinc-900 dark:text-zinc-100 text-base">Delete Project</h2>
               </div>
               <button
                 onClick={() => setProjectToDelete(null)}
@@ -600,7 +600,7 @@ export default function Sidebar({
             </div>
             
             <p className="text-sm text-zinc-500 dark:text-zinc-400 font-medium leading-relaxed">
-              Are you sure you want to delete this project, including all its columns and tasks? This action <span className="text-zinc-900 dark:text-zinc-100 font-bold">cannot be undone</span>.
+              Are you sure you want to delete this project, including all its columns and tasks? This action <span className="text-zinc-900 dark:text-zinc-100 font-semibold">cannot be undone</span>.
             </p>
 
             <div className="flex items-center justify-end gap-2 pt-2">

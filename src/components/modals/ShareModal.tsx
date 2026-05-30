@@ -66,7 +66,7 @@ function RoleDropdown({value, onChange, align = 'left'}: {value: string; onChang
 			<button
 				type='button'
 				onClick={() => setOpen((v) => !v)}
-				className='flex items-center gap-1.5 px-2 py-1 text-[10px] font-bold bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors uppercase h-7'>
+				className='flex items-center gap-1.5 px-2 py-1 text-[10px] font-semibold bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors uppercase h-7'>
 				<span className='text-zinc-600 dark:text-zinc-400'>{selected.label}</span>
 				<ChevronDown className={cn('w-3 h-3 text-zinc-400 transition-transform duration-200', open && 'rotate-180')} />
 			</button>
@@ -176,7 +176,7 @@ export default function ShareModal({isOpen, onClose, projectId, currentUserId}: 
 
 	return createPortal(
 		<div
-			className='fixed inset-0 z-[200] overflow-y-auto bg-black/40 backdrop-blur-[2px]'
+			className='fixed inset-0 z-[200] overflow-y-auto bg-black/60'
 			onPointerDown={(e) => {
 				if (e.target === e.currentTarget) onClose();
 			}}>
@@ -256,7 +256,7 @@ export default function ShareModal({isOpen, onClose, projectId, currentUserId}: 
 									</div>
 									<button
 										onClick={() => addProjectMember(user.id)}
-										className='flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 rounded-lg hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-all cursor-pointer'>
+										className='flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 rounded-lg hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-all cursor-pointer'>
 										<UserPlus className='w-3 h-3' />
 										Invite
 									</button>
@@ -270,7 +270,7 @@ export default function ShareModal({isOpen, onClose, projectId, currentUserId}: 
 
 				{/* Members List */}
 				<div className='flex flex-col gap-2 pt-2 border-t border-zinc-200 dark:border-zinc-800'>
-					<h3 className='text-[10px] font-bold text-zinc-400 uppercase px-1'>Current Members</h3>
+					<h3 className='text-[10px] font-semibold text-zinc-400 uppercase px-1'>Current Members</h3>
 					<div className='flex flex-col gap-1 max-h-[300px] overflow-y-auto pr-1 hide-scrollbar'>
 						{projectMembers.map((member) => (
 							<div
@@ -300,7 +300,7 @@ export default function ShareModal({isOpen, onClose, projectId, currentUserId}: 
 											align='right'
 										/>
 									:	<div className='px-2 py-1 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200/50 dark:border-zinc-800/50 rounded-lg'>
-											<span className='text-[10px] font-bold text-zinc-500 dark:text-zinc-500 uppercase '>{member.role}</span>
+											<span className='text-[10px] font-semibold text-zinc-500 dark:text-zinc-500 uppercase '>{member.role}</span>
 										</div>
 									}
 

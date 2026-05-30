@@ -185,14 +185,13 @@ export default function Home() {
 	if (loading) {
 		return (
 			<div className='min-h-screen flex flex-col items-center justify-center bg-white dark:bg-zinc-950 animate-in fade-in duration-700'>
-				<div className='relative mb-8'>
-					<div className='w-16 h-16 bg-blue-500 rounded-2xl flex items-center justify-center shadow-2xl shadow-blue-500/20 animate-bounce'>
-						<FolderKanban className='w-8 h-8 text-white' />
+				<div className='mb-8'>
+					<div className='w-12 h-12 bg-blue-500 rounded-lg flex items-center justify-center shadow-sm'>
+						<FolderKanban className='w-6 h-6 text-white' />
 					</div>
-					<div className='absolute -inset-4 bg-blue-500/20 rounded-full blur-2xl animate-pulse -z-10' />
 				</div>
 				<div className='flex flex-col items-center gap-2'>
-					<h2 className='text-xl font-bold text-zinc-900 dark:text-zinc-100 '> Kanban</h2>
+					<h2 className='text-lg font-semibold text-zinc-900 dark:text-zinc-100'>Kanban</h2>
 					<div className='flex items-center gap-2 text-zinc-400 dark:text-zinc-500 text-sm font-medium'>
 						<Loader2 className='w-4 h-4 animate-spin' />
 						<span>Synchronizing your workspace...</span>
@@ -255,14 +254,14 @@ export default function Home() {
 						<KanbanBoard projectId={activeProjectId} onToggleSidebar={toggleSidebar} />
 					</div>
 				:	<div className='flex-1 flex flex-col items-center justify-center p-8 text-center max-w-md mx-auto'>
-						<div className='w-16 h-16 bg-zinc-100 dark:bg-zinc-900 rounded-2xl flex items-center justify-center mb-6 border border-zinc-200 dark:border-zinc-800'>
-							<LayoutDashboard className='w-8 h-8 text-zinc-400' />
+						<div className='w-12 h-12 bg-zinc-100 dark:bg-zinc-900 rounded-lg flex items-center justify-center mb-6 border border-zinc-200 dark:border-zinc-800 shadow-sm'>
+							<LayoutDashboard className='w-6 h-6 text-zinc-400' />
 						</div>
-						<h2 className='text-xl font-semibold text-zinc-900 dark:text-zinc-100 mb-2'>No projects yet</h2>
+						<h2 className='text-lg font-semibold text-zinc-900 dark:text-zinc-100 mb-2'>No projects yet</h2>
 						<p className='text-zinc-500 dark:text-zinc-400 mb-8 text-sm'>
-							Create a new project to start organizing your tasks and ideas with your new minimalist Kanban board.
+							Create a new project to start organizing your tasks and ideas.
 						</p>
-						<p className='text-xs font-semibold text-zinc-400 uppercase '>← Use the sidebar to create your first project</p>
+						<p className='text-xs font-semibold text-zinc-400 uppercase'>← Use the sidebar to create your first project</p>
 					</div>
 				}
 			</main>

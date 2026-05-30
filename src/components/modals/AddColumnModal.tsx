@@ -53,7 +53,7 @@ export default function AddColumnModal({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[200] overflow-y-auto bg-black/40 backdrop-blur-[2px]"
+      className="fixed inset-0 z-[200] overflow-y-auto bg-black/60"
       onPointerDown={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
@@ -91,7 +91,7 @@ export default function AddColumnModal({
         {/* ── Scrollable body ── */}
         <div className="flex-1 overflow-y-auto min-h-0 px-6 flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
-            <label className="flex items-center gap-1.5 text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase ">
+            <label className="flex items-center gap-1.5 text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase ">
               Column Name
             </label>
             <input
@@ -107,7 +107,7 @@ export default function AddColumnModal({
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label className="flex items-center gap-1.5 text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase ">
+            <label className="flex items-center gap-1.5 text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase ">
               Description <span className="text-[10px] font-normal opacity-70">(Optional)</span>
             </label>
             <input
@@ -122,7 +122,7 @@ export default function AddColumnModal({
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label className="flex items-center gap-1.5 text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase ">
+            <label className="flex items-center gap-1.5 text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase ">
               Theme Color
             </label>
             <div className="grid grid-cols-6 gap-2 pt-1">
@@ -156,7 +156,7 @@ export default function AddColumnModal({
           <button
             onClick={() => handleSubmit()}
             disabled={isSubmitting || !newColumnTitle.trim()}
-            className="flex items-center gap-2 px-6 py-2 text-sm font-bold bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 rounded-xl hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+            className="flex items-center gap-2 px-6 py-2 text-sm font-semibold bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 rounded-xl hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
           >
             {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
             Create Column
