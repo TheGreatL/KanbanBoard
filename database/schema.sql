@@ -39,7 +39,7 @@ CREATE TABLE IF NOT EXISTS columns (
   title TEXT NOT NULL,
   description TEXT,
   color TEXT NOT NULL DEFAULT 'zinc',
-  position INTEGER NOT NULL,
+  position TEXT NOT NULL,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   archived_at TIMESTAMPTZ DEFAULT NULL,
   is_archive_pool BOOLEAN DEFAULT FALSE
@@ -52,7 +52,7 @@ CREATE TABLE IF NOT EXISTS tasks (
   project_id UUID REFERENCES projects ON DELETE CASCADE NOT NULL,
   title TEXT,
   content TEXT NOT NULL,
-  position INTEGER NOT NULL,
+  position TEXT NOT NULL,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   archived_at TIMESTAMPTZ DEFAULT NULL,
   previous_column_id UUID REFERENCES columns(id) ON DELETE SET NULL

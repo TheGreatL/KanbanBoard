@@ -27,6 +27,7 @@ import AddColumnModal from './modals/AddColumnModal';
 import {BoardSkeleton} from './ui/Skeleton';
 import { throttle } from '@/lib/utils';
 import Image from 'next/image';
+import { generateKeyBetween } from 'fractional-indexing';
 interface KanbanBoardProps {
 	projectId: string;
 	onToggleSidebar: () => void;
@@ -109,7 +110,7 @@ export default function KanbanBoard({projectId, onToggleSidebar}: KanbanBoardPro
 	const sortTasks = (tsks: Task[]) => {
 		return [...tsks].sort((a, b) => {
 			if (a.column_id !== b.column_id) return a.column_id.localeCompare(b.column_id);
-			return a.position - b.position || a.id.localeCompare(b.id);
+			return a.position.localeCompare(b.position) || a.id.localeCompare(b.id);
 		});
 	};
 
@@ -197,7 +198,7 @@ export default function KanbanBoard({projectId, onToggleSidebar}: KanbanBoardPro
 		const sortedCols = [...finalCols].sort((a, b) => {
 			if (a.is_archive_pool) return 1;
 			if (b.is_archive_pool) return -1;
-			return a.position - b.position;
+			return a.position.localeCompare(b.position);
 		});
 
 		updateColumns(sortedCols);
@@ -415,7 +416,8 @@ export default function KanbanBoard({projectId, onToggleSidebar}: KanbanBoardPro
 
 	const addTask = async (columnId: string, title: string, content: string) => {
 		const colTasks = tasks.filter((t) => t.column_id === columnId);
-		const newPos = colTasks.length > 0 ? colTasks[colTasks.length - 1].position + 1 : 0;
+		const lastTask = colTasks.length > 0 ? colTasks[colTasks.length - 1] : null;
+		const newPos = generateKeyBetween(lastTask ? lastTask.position : null, null);
 
 		const tempId = crypto.randomUUID();
 		const nowStr = new Date().toISOString();
@@ -463,11 +465,11 @@ export default function KanbanBoard({projectId, onToggleSidebar}: KanbanBoardPro
 			// Soft delete: move to archive pool, set archived_at, and remember current column
 			const now = new Date().toISOString();
 			const currentColumnId = task.column_id;
-			const updatedTask = {...task, column_id: archivePool.id, archived_at: now, previous_column_id: currentColumnId, position: 0};
+			const updatedTask = {...task, column_id: archivePool.id, archived_at: now, previous_column_id: currentColumnId, position: 'a0'};
 			updateTasks((prev) => [updatedTask, ...prev.filter((t) => t.id !== id)]);
 			await supabase
 				.from('tasks')
-				.update({column_id: archivePool.id, archived_at: now, previous_column_id: currentColumnId, position: 0})
+				.update({column_id: archivePool.id, archived_at: now, previous_column_id: currentColumnId, position: 'a0'})
 				.eq('id', id);
 
 			showToast({
@@ -577,12 +579,16 @@ export default function KanbanBoard({projectId, onToggleSidebar}: KanbanBoardPro
 
 		if (!finalTargetId) return;
 
+		const colTasks = tasks.filter((t) => t.column_id === finalTargetId);
+		const lastTask = colTasks.length > 0 ? colTasks[colTasks.length - 1] : null;
+		const newPos = generateKeyBetween(lastTask ? lastTask.position : null, null);
+
 		updateTasks((prev) =>
-			prev.map((t) => (t.id === id ? {...t, column_id: finalTargetId, archived_at: null, previous_column_id: null, position: 0} : t)),
+			prev.map((t) => (t.id === id ? {...t, column_id: finalTargetId, archived_at: null, previous_column_id: null, position: newPos} : t)),
 		);
 		const {error} = await supabase
 			.from('tasks')
-			.update({column_id: finalTargetId, archived_at: null, previous_column_id: null, position: 0})
+			.update({column_id: finalTargetId, archived_at: null, previous_column_id: null, position: newPos})
 			.eq('id', id);
 		if (!error) {
 			showToast({
@@ -596,7 +602,8 @@ export default function KanbanBoard({projectId, onToggleSidebar}: KanbanBoardPro
 	const addColumn = async (title: string, color: string, description?: string) => {
 		const archivePool = columns.find((c) => c.is_archive_pool);
 		const regularCols = columns.filter((c) => !c.is_archive_pool);
-		const newPos = regularCols.length;
+		const lastCol = regularCols.length > 0 ? regularCols[regularCols.length - 1] : null;
+		const newPos = generateKeyBetween(lastCol ? lastCol.position : null, null);
 
 		// Optimistic update
 		const tempId = crypto.randomUUID();
@@ -614,7 +621,7 @@ export default function KanbanBoard({projectId, onToggleSidebar}: KanbanBoardPro
 		};
 
 		if (archivePool) {
-			updateColumns([...regularCols, tempColumn, {...archivePool, position: newPos + 1}]);
+			updateColumns([...regularCols, tempColumn, archivePool]);
 		} else {
 			updateColumns([...regularCols, tempColumn]);
 		}
@@ -632,13 +639,6 @@ export default function KanbanBoard({projectId, onToggleSidebar}: KanbanBoardPro
 
 		if (data) {
 			updateColumns((prev) => prev.map((c) => (c.id === tempId ? data : c)));
-
-			if (archivePool) {
-				await supabase
-					.from('columns')
-					.update({position: newPos + 1})
-					.eq('id', archivePool.id);
-			}
 
 			if (!selectedColumnId) setSelectedColumnId(data.id);
 
@@ -808,24 +808,22 @@ export default function KanbanBoard({projectId, onToggleSidebar}: KanbanBoardPro
 			const finalColumns = [...newColumns].sort((a, b) => {
 				if (a.is_archive_pool) return 1;
 				if (b.is_archive_pool) return -1;
-				return 0;
+				return 0; // maintain arrayMove order
 			});
 
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			const updatedColumns = finalColumns.map((col, idx) => ({...col, position: idx} as any));
-			setColumns(updatedColumns);
+			const newIndex = finalColumns.findIndex((col) => col.id === activeId);
+			const prevCol = newIndex > 0 ? finalColumns[newIndex - 1] : null;
+			const nextCol = newIndex < finalColumns.length - 1 ? finalColumns[newIndex + 1] : null;
 
-			const columnsToUpsert = updatedColumns.map((col) => ({
-				id: col.id,
-				project_id: projectId,
-				position: col.position,
-				title: col.title,
-				color: col.color,
-				is_archive_pool: col.is_archive_pool,
-			}));
+			const newPos = generateKeyBetween(
+				prevCol ? prevCol.position : null,
+				nextCol && !nextCol.is_archive_pool ? nextCol.position : null
+			);
+
+			updateColumns((prev) => prev.map((c) => (c.id === activeId ? {...c, position: newPos} : c)));
 
 			try {
-				const {error} = await supabase.from('columns').upsert(columnsToUpsert);
+				const {error} = await supabase.from('columns').update({position: newPos}).eq('id', activeId);
 				if (error) throw error;
 				showToast({
 					type: 'success',
@@ -851,29 +849,21 @@ export default function KanbanBoard({projectId, onToggleSidebar}: KanbanBoardPro
 			if (!activeTaskInState) return;
 
 			const targetColumnId = activeTaskInState.column_id;
-			const affectedColumnIds = Array.from(new Set([initialColumnId || targetColumnId, targetColumnId]));
+			const colTasks = currentTasks.filter((t) => t.column_id === targetColumnId);
+			const newIndex = colTasks.findIndex((t) => t.id === activeId);
 
-			// Select and prepare ALL tasks in the source and destination columns
-			const tasksToUpsert = currentTasks
-				.filter((t) => affectedColumnIds.includes(t.column_id))
-				.map((t) => {
-					const colTasks = currentTasks.filter((tsk) => tsk.column_id === t.column_id);
-					const idx = colTasks.findIndex((tsk) => tsk.id === t.id);
-					return {
-						id: t.id,
-						column_id: t.column_id,
-						position: idx,
-						project_id: projectId,
-						content: t.content,
-						title: t.title,
-						archived_at: t.archived_at,
-					};
-				});
+			const prevTask = newIndex > 0 ? colTasks[newIndex - 1] : null;
+			const nextTask = newIndex < colTasks.length - 1 ? colTasks[newIndex + 1] : null;
 
-			if (tasksToUpsert.length === 0) return;
+			const newPos = generateKeyBetween(
+				prevTask ? prevTask.position : null,
+				nextTask ? nextTask.position : null
+			);
+
+			updateTasks((prev) => prev.map((t) => (t.id === activeId ? {...t, position: newPos} : t)));
 
 			try {
-				const {error} = await supabase.from('tasks').upsert(tasksToUpsert);
+				const {error} = await supabase.from('tasks').update({column_id: targetColumnId, position: newPos}).eq('id', activeId);
 				if (error) throw error;
 
 				showToast({
@@ -881,7 +871,7 @@ export default function KanbanBoard({projectId, onToggleSidebar}: KanbanBoardPro
 					title: 'Board Updated',
 					message:
 						initialColumnId === targetColumnId ? 'Task order saved.' : (
-							`"${activeTaskInState.title}" moved to ${currentCols.find((c) => c.id === targetColumnId)?.title || 'Target'}.`
+							`"${activeTaskInState.title}" moved to target.`
 						),
 				});
 				// eslint-disable-next-line @typescript-eslint/no-explicit-any

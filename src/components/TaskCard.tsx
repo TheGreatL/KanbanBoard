@@ -12,7 +12,7 @@ export interface Task {
   project_id: string;
   title: string;
   content: string;
-  position: number;
+  position: string;
   created_at?: string;
   archived_at?: string | null;
   previous_column_id?: string | null;
