@@ -191,10 +191,17 @@
       "sourceType": "github",
       "computedHash": "2353b78762610839d97e89a787eb1f0f25ab54ac7aec5118473aebd288d9e5a8"
     },
-    "supabase-postgres-best-practices": {
-      "source": "davila7/claude-code-templates",
+    "supabase": {
+      "source": "supabase/agent-skills",
       "sourceType": "github",
-      "computedHash": "4ca30065b3947eb024a6161e295ad8affbbf3cb71da947becabc0d1b4f2217d8"
+      "skillPath": "skills/supabase/SKILL.md",
+      "computedHash": "b77176bbd69eb179e1250eac478178a43f635f5f9efecb9cf196eb5482d7e8c8"
+    },
+    "supabase-postgres-best-practices": {
+      "source": "supabase/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/supabase-postgres-best-practices/SKILL.md",
+      "computedHash": "38fb49d3b57c46cba18b07a44254bd42c4c93903fda1d8cb683429615d32fec4"
     },
     "tailwind-design-system": {
       "source": "wshobson/agents",

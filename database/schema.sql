@@ -9,6 +9,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE TABLE IF NOT EXISTS profiles (
   id UUID REFERENCES auth.users ON DELETE CASCADE PRIMARY KEY,
   username TEXT UNIQUE NOT NULL,
+  avatar_url TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -36,6 +37,7 @@ CREATE TABLE IF NOT EXISTS columns (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   project_id UUID REFERENCES projects ON DELETE CASCADE NOT NULL,
   title TEXT NOT NULL,
+  description TEXT,
   color TEXT NOT NULL DEFAULT 'zinc',
   position INTEGER NOT NULL,
   created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -169,10 +171,15 @@ CREATE POLICY "Users can view columns" ON columns
   FOR SELECT USING (is_project_member(project_id, auth.uid()));
 
 DROP POLICY IF EXISTS "Owners and editors can manage columns" ON columns;
-CREATE POLICY "Owners and editors can manage columns" ON columns
-  FOR ALL 
-  USING (is_project_admin(project_id, auth.uid()))
+CREATE POLICY "Owners and editors can insert columns" ON columns
+  FOR INSERT WITH CHECK (is_project_admin(project_id, auth.uid()));
+
+CREATE POLICY "Owners and editors can update columns" ON columns
+  FOR UPDATE USING (is_project_admin(project_id, auth.uid()))
   WITH CHECK (is_project_admin(project_id, auth.uid()));
+
+CREATE POLICY "Owners and editors can delete columns" ON columns
+  FOR DELETE USING (is_project_admin(project_id, auth.uid()));
 
 -- Tasks Policies
 DROP POLICY IF EXISTS "Users can view tasks" ON tasks;
@@ -180,10 +187,15 @@ CREATE POLICY "Users can view tasks" ON tasks
   FOR SELECT USING (is_project_member(project_id, auth.uid()));
 
 DROP POLICY IF EXISTS "Owners and editors can manage tasks" ON tasks;
-CREATE POLICY "Owners and editors can manage tasks" ON tasks
-  FOR ALL 
-  USING (is_project_admin(project_id, auth.uid()))
+CREATE POLICY "Owners and editors can insert tasks" ON tasks
+  FOR INSERT WITH CHECK (is_project_admin(project_id, auth.uid()));
+
+CREATE POLICY "Owners and editors can update tasks" ON tasks
+  FOR UPDATE USING (is_project_admin(project_id, auth.uid()))
   WITH CHECK (is_project_admin(project_id, auth.uid()));
+
+CREATE POLICY "Owners and editors can delete tasks" ON tasks
+  FOR DELETE USING (is_project_admin(project_id, auth.uid()));
 
 -- 5. Triggers & Functions
 -- Function to handle new user registration
@@ -272,3 +284,31 @@ WHERE a.id > b.id
   AND a.project_id = b.project_id
   AND a.is_archive_pool = true
   AND b.is_archive_pool = true;
+
+-- 8. Storage Buckets & Policies
+INSERT INTO storage.buckets (id, name, public)
+SELECT 'avatars', 'avatars', true
+WHERE NOT EXISTS (
+    SELECT 1 FROM storage.buckets WHERE id = 'avatars'
+);
+
+CREATE POLICY "Public Access" ON storage.objects
+  FOR SELECT USING (bucket_id = 'avatars');
+
+CREATE POLICY "Users can upload their own avatar" ON storage.objects
+  FOR INSERT WITH CHECK (
+    bucket_id = 'avatars' AND
+    (storage.foldername(name))[1] = auth.uid()::text
+  );
+
+CREATE POLICY "Users can update their own avatar" ON storage.objects
+  FOR UPDATE USING (
+    bucket_id = 'avatars' AND
+    (storage.foldername(name))[1] = auth.uid()::text
+  );
+
+CREATE POLICY "Users can delete their own avatar" ON storage.objects
+  FOR DELETE USING (
+    bucket_id = 'avatars' AND
+    (storage.foldername(name))[1] = auth.uid()::text
+  );
