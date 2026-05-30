@@ -935,7 +935,7 @@ export default function KanbanBoard({projectId, onToggleSidebar}: KanbanBoardPro
 					title: 'Board Updated',
 					message:
 						initialColumnId === targetColumnId ? 'Task order saved.' : (
-							`"${activeTaskInState.title}" moved to target.`
+							`"${activeTaskInState.title}" moved to ${targetColumn?.title || 'new column'}.`
 						),
 				});
 				// eslint-disable-next-line @typescript-eslint/no-explicit-any
