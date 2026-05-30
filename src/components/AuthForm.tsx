@@ -4,7 +4,7 @@ import {useState} from 'react';
 import {supabase} from '@/lib/supabase';
 import {useRouter} from 'next/navigation';
 import Link from 'next/link';
-import {GithubIcon, Loader2} from 'lucide-react';
+import {GithubIcon, Loader2, Eye, EyeOff} from 'lucide-react';
 import {useToast} from './ui/Toast';
 import {Tooltip} from './ui/Tooltip';
 import {cn} from '@/lib/utils';
@@ -15,6 +15,8 @@ export default function AuthForm() {
 	const [email, setEmail] = useState('');
 	const [username, setUsername] = useState('');
 	const [password, setPassword] = useState('');
+	const [confirmPassword, setConfirmPassword] = useState('');
+	const [showPassword, setShowPassword] = useState(false);
 	const [loading, setLoading] = useState(false);
 	const [formError, setFormError] = useState<string | null>(null);
 	const router = useRouter();
@@ -23,6 +25,8 @@ export default function AuthForm() {
 	const handleToggleMode = (login: boolean) => {
 		setIsLogin(login);
 		setFormError(null);
+		setConfirmPassword('');
+		setShowPassword(false);
 	};
 
 	const handleAuth = async (e: React.FormEvent) => {
@@ -44,6 +48,12 @@ export default function AuthForm() {
 				});
 				router.push('/');
 			} else {
+				if (password !== confirmPassword) {
+					setFormError('Passwords do not match.');
+					setLoading(false);
+					return;
+				}
+
 				// Username validation: lowercase alphanumeric, hyphens, underscores
 				const usernameRegex = /^[a-z0-9-_]+$/;
 				if (!usernameRegex.test(username)) {
@@ -52,7 +62,7 @@ export default function AuthForm() {
 					return;
 				}
 
-				const {error} = await supabase.auth.signUp({
+				const {data, error} = await supabase.auth.signUp({
 					email,
 					password,
 					options: {
@@ -60,6 +70,12 @@ export default function AuthForm() {
 					},
 				});
 				if (error) throw error;
+
+				// Detect fake success caused by Supabase Email Enumeration Protection
+				// If the email already exists, Supabase returns a fake user with an empty identities array
+				if (data.user && data.user.identities && data.user.identities.length === 0) {
+					throw new Error('User already registered');
+				}
 				showToast({
 					type: 'success',
 					title: 'Account Created',
@@ -72,7 +88,10 @@ export default function AuthForm() {
 
 			// Map specific Database error from trigger
 			if (message.includes('Database error saving new user') || message.includes('User already registered')) {
-				message = 'This username or email is already taken. Please try another one.';
+				message = 'This email or username is already registered. If you previously signed up with GitHub, please use GitHub to log in.';
+			}
+			if (message.includes('email rate limit exceeded')) {
+				message = 'This email is already registered. Try logging in instead.';
 			}
 
 			setFormError(message);
@@ -199,17 +218,57 @@ export default function AuthForm() {
 							</Link>
 						)}
 					</div>
-					<input
-						id='password'
-						type='password'
-						required
-						value={password}
-						onChange={(e) => setPassword(e.target.value)}
-						autoComplete={isLogin ? 'current-password' : 'new-password'}
-						className='w-full px-3 py-2 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100 transition-shadow text-zinc-900 dark:text-zinc-100'
-						placeholder='••••••••'
-					/>
+					<div className="relative">
+						<input
+							id='password'
+							type={showPassword ? 'text' : 'password'}
+							required
+							value={password}
+							onChange={(e) => setPassword(e.target.value)}
+							autoComplete={isLogin ? 'current-password' : 'new-password'}
+							className='w-full px-3 py-2 pr-10 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100 transition-shadow text-zinc-900 dark:text-zinc-100'
+							placeholder='••••••••'
+						/>
+						<button
+							type="button"
+							onClick={() => setShowPassword(!showPassword)}
+							className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors"
+							tabIndex={-1}
+						>
+							{showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+						</button>
+					</div>
 				</div>
+
+				{!isLogin && (
+					<div>
+						<label
+							htmlFor='confirmPassword'
+							className='block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1'>
+							Confirm Password
+						</label>
+						<div className="relative">
+							<input
+								id='confirmPassword'
+								type={showPassword ? 'text' : 'password'}
+								required
+								value={confirmPassword}
+								onChange={(e) => setConfirmPassword(e.target.value)}
+								autoComplete='new-password'
+								className='w-full px-3 py-2 pr-10 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100 transition-shadow text-zinc-900 dark:text-zinc-100'
+								placeholder='••••••••'
+							/>
+							<button
+								type="button"
+								onClick={() => setShowPassword(!showPassword)}
+								className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors"
+								tabIndex={-1}
+							>
+								{showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+							</button>
+						</div>
+					</div>
+				)}
 
 				<button
 					type='submit'
