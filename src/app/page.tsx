@@ -3,7 +3,7 @@
 import {useEffect, useState, useCallback} from 'react';
 import {useRouter} from 'next/navigation';
 import {supabase} from '@/lib/supabase';
-import {Loader2, LayoutDashboard, FolderKanban} from 'lucide-react';
+import {Loader2, LayoutDashboard, FolderKanban, Menu} from 'lucide-react';
 import Sidebar, {Project} from '@/components/Sidebar';
 import {cn} from '@/lib/utils';
 import dynamic from 'next/dynamic';
@@ -236,7 +236,20 @@ export default function Home() {
 				/>
 			</div>
 
-			<main className='flex-1 overflow-hidden flex flex-col bg-white dark:bg-zinc-950 min-w-0 min-h-0'>
+			<main className='flex-1 overflow-hidden flex flex-col bg-white dark:bg-zinc-950 min-w-0 min-h-0 relative'>
+				{/* Empty State Mobile Menu Button */}
+				{!activeProjectId && (
+					<div className='lg:hidden absolute top-4 left-4 z-50'>
+						<button
+							onClick={toggleSidebar}
+							className="w-10 h-10 rounded-xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 flex items-center justify-center hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors shadow-sm"
+							aria-label="Open Menu"
+						>
+							<Menu className="w-5 h-5 text-zinc-600 dark:text-zinc-400" />
+						</button>
+					</div>
+				)}
+
 				{activeProjectId ?
 					<div className='flex-1 p-4 lg:p-8 min-w-0 min-h-0 relative overflow-hidden'>
 						<KanbanBoard projectId={activeProjectId} onToggleSidebar={toggleSidebar} />
