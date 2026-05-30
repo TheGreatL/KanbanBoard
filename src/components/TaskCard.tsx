@@ -153,7 +153,7 @@ export default function TaskCard({ task, columnColor = "zinc", deleteTask, updat
         {/* Card content */}
         <div className="flex flex-col gap-1.5 p-3 pl-1 flex-1 min-w-0">
           {task.title && (
-            <p className="font-bold text-zinc-900 dark:text-zinc-100 text-sm leading-snug break-words tracking-tight">
+            <p className="font-bold text-zinc-900 dark:text-zinc-100 text-sm leading-snug break-words ">
               {task.title}
             </p>
           )}
@@ -260,7 +260,7 @@ export default function TaskCard({ task, columnColor = "zinc", deleteTask, updat
 
             <div className="flex flex-col gap-3">
               <div className="flex flex-col gap-1">
-                <label className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
+                <label className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase ">
                   Title
                 </label>
                 <input
@@ -274,7 +274,7 @@ export default function TaskCard({ task, columnColor = "zinc", deleteTask, updat
               </div>
 
               <div className="flex flex-col gap-1">
-                <label className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
+                <label className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase ">
                   Description
                 </label>
                 <textarea

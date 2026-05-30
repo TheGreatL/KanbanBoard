@@ -212,7 +212,7 @@ export default function ProfilePage() {
 						onSubmit={handleSave}
 						className='bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl overflow-hidden'>
 						<div className='px-5 py-3 border-b border-zinc-100 dark:border-zinc-800'>
-							<h2 className='text-xs font-bold text-zinc-500 uppercase tracking-widest'>Account Details</h2>
+							<h2 className='text-xs font-bold text-zinc-500 uppercase '>Account Details</h2>
 						</div>
 
 						{profileError && (
@@ -265,7 +265,7 @@ export default function ProfilePage() {
 					{/* Danger zone */}
 					<div className='bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl overflow-hidden'>
 						<div className='px-5 py-3 border-b border-zinc-100 dark:border-zinc-800'>
-							<h2 className='text-xs font-bold text-zinc-500 uppercase tracking-widest'>Session</h2>
+							<h2 className='text-xs font-bold text-zinc-500 uppercase '>Session</h2>
 						</div>
 						<div className='px-5 py-4 flex items-center justify-between'>
 							<div>

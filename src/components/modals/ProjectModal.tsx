@@ -81,7 +81,7 @@ export default function ProjectModal({
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <label className="flex items-center gap-1.5 text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
+          <label className="flex items-center gap-1.5 text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase ">
             Project Name
           </label>
           <div className="relative">
@@ -103,7 +103,7 @@ export default function ProjectModal({
 
         {!isEdit && (
           <div className="flex flex-col gap-2 mt-2">
-            <label className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
+            <label className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase ">
               Project Template
             </label>
             <div className="flex flex-col gap-3 max-h-[400px] overflow-y-auto p-2">

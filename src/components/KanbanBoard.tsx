@@ -933,18 +933,18 @@ export default function KanbanBoard({projectId, onToggleSidebar}: KanbanBoardPro
 							<div className='hidden lg:flex w-8 h-8 rounded-lg bg-zinc-100 dark:bg-zinc-800 items-center justify-center shrink-0'>
 								<Columns className='w-4 h-4 text-zinc-500' />
 							</div>
-							<h2 className='text-sm font-bold text-zinc-900 dark:text-zinc-100 truncate tracking-tight'>
+							<h2 className='text-sm font-bold text-zinc-900 dark:text-zinc-100 truncate '>
 								{projectName || 'Board Canvas'}
 							</h2>
 							{!isEditable && (
-								<div className='flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-[10px] font-bold text-zinc-500 uppercase tracking-wider animate-in fade-in slide-in-from-left-2 duration-300'>
+								<div className='flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-[10px] font-bold text-zinc-500 uppercase animate-in fade-in slide-in-from-left-2 duration-300'>
 									<Lock className='w-2.5 h-2.5' />
 									<span>View Only</span>
 								</div>
 							)}
 						</div>
 						<div className='hidden lg:block h-4 w-px bg-zinc-200 dark:bg-zinc-800' />
-						<span className='hidden lg:block text-[10px] text-zinc-500 font-bold uppercase tracking-wider'>
+						<span className='hidden lg:block text-[10px] text-zinc-500 font-bold uppercase '>
 							{columns.length} Columns • {tasks.length} Tasks
 						</span>
 						<div className='h-4 w-px bg-zinc-200 dark:bg-zinc-800' />
@@ -978,7 +978,7 @@ export default function KanbanBoard({projectId, onToggleSidebar}: KanbanBoardPro
 										e.stopPropagation();
 										openShareModal();
 									}}
-									className='flex items-center gap-1.5 text-[10px] text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 font-bold uppercase tracking-wider transition-colors'>
+									className='flex items-center gap-1.5 text-[10px] text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 font-bold uppercase transition-colors'>
 									<Users className='w-3 h-3' />
 									<span>Just you</span>
 								</button>

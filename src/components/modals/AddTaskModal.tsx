@@ -91,7 +91,7 @@ export default function AddTaskModal({
         {/* Fields */}
         <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
-            <label className="flex items-center gap-1.5 text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
+            <label className="flex items-center gap-1.5 text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase ">
               Select Column
             </label>
             <select
@@ -109,7 +109,7 @@ export default function AddTaskModal({
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label className="flex items-center gap-1.5 text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
+            <label className="flex items-center gap-1.5 text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase ">
               <LayoutList className="w-3 h-3" />
               Task Title
             </label>
@@ -123,7 +123,7 @@ export default function AddTaskModal({
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label className="flex items-center gap-1.5 text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
+            <label className="flex items-center gap-1.5 text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase ">
               <AlignLeft className="w-3 h-3" />
               Description
             </label>

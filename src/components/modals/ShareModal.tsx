@@ -66,7 +66,7 @@ function RoleDropdown({value, onChange, align = 'left'}: {value: string; onChang
 			<button
 				type='button'
 				onClick={() => setOpen((v) => !v)}
-				className='flex items-center gap-1.5 px-2 py-1 text-[10px] font-bold bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors uppercase tracking-wider h-7'>
+				className='flex items-center gap-1.5 px-2 py-1 text-[10px] font-bold bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors uppercase h-7'>
 				<span className='text-zinc-600 dark:text-zinc-400'>{selected.label}</span>
 				<ChevronDown className={cn('w-3 h-3 text-zinc-400 transition-transform duration-200', open && 'rotate-180')} />
 			</button>
@@ -264,7 +264,7 @@ export default function ShareModal({isOpen, onClose, projectId, currentUserId}: 
 
 				{/* Members List */}
 				<div className='flex flex-col gap-2 pt-2 border-t border-zinc-200 dark:border-zinc-800'>
-					<h3 className='text-[10px] font-bold text-zinc-400 uppercase tracking-widest px-1'>Current Members</h3>
+					<h3 className='text-[10px] font-bold text-zinc-400 uppercase px-1'>Current Members</h3>
 					<div className='flex flex-col gap-1 max-h-[300px] overflow-y-auto pr-1 hide-scrollbar'>
 						{projectMembers.map((member) => (
 							<div
@@ -294,7 +294,7 @@ export default function ShareModal({isOpen, onClose, projectId, currentUserId}: 
 											align='right'
 										/>
 									:	<div className='px-2 py-1 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200/50 dark:border-zinc-800/50 rounded-lg'>
-											<span className='text-[10px] font-bold text-zinc-500 dark:text-zinc-500 uppercase tracking-wider'>{member.role}</span>
+											<span className='text-[10px] font-bold text-zinc-500 dark:text-zinc-500 uppercase '>{member.role}</span>
 										</div>
 									}
 

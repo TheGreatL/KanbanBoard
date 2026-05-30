@@ -89,7 +89,7 @@ export default function AddColumnModal({
         {/* Fields */}
         <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
-            <label className="flex items-center gap-1.5 text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
+            <label className="flex items-center gap-1.5 text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase ">
               Column Name
             </label>
             <input
@@ -105,7 +105,7 @@ export default function AddColumnModal({
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label className="flex items-center gap-1.5 text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
+            <label className="flex items-center gap-1.5 text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase ">
               Description <span className="text-[10px] font-normal opacity-70">(Optional)</span>
             </label>
             <input
@@ -120,7 +120,7 @@ export default function AddColumnModal({
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label className="flex items-center gap-1.5 text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
+            <label className="flex items-center gap-1.5 text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase ">
               Theme Color
             </label>
             <div className="grid grid-cols-6 gap-2 pt-1">

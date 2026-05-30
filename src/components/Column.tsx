@@ -334,7 +334,7 @@ export default function Column({
           </div>
 
           <span className={cn(
-            "shrink-0 text-[10px] px-2 py-0.5 rounded-lg font-bold transition-all duration-300 shadow-sm uppercase tracking-tighter",
+            "shrink-0 text-[10px] px-2 py-0.5 rounded-lg font-bold transition-all duration-300 shadow-sm uppercase ",
             badgeColorClass
           )}>
             {tasks.length} {tasks.length === 1 ? 'Task' : 'Tasks'}
@@ -407,7 +407,7 @@ export default function Column({
               <div className="w-6 h-6 rounded-lg bg-white dark:bg-zinc-800 shadow-sm flex items-center justify-center group-hover/add:scale-110 transition-transform">
                 <Plus className="w-3.5 h-3.5" />
               </div>
-              <span className="font-bold tracking-tight">Add task</span>
+              <span className="font-bold ">Add task</span>
             </button>
           )}
         </div>

@@ -192,7 +192,7 @@ export default function Home() {
 					<div className='absolute -inset-4 bg-blue-500/20 rounded-full blur-2xl animate-pulse -z-10' />
 				</div>
 				<div className='flex flex-col items-center gap-2'>
-					<h2 className='text-xl font-bold text-zinc-900 dark:text-zinc-100 tracking-tight'> Kanban</h2>
+					<h2 className='text-xl font-bold text-zinc-900 dark:text-zinc-100 '> Kanban</h2>
 					<div className='flex items-center gap-2 text-zinc-400 dark:text-zinc-500 text-sm font-medium'>
 						<Loader2 className='w-4 h-4 animate-spin' />
 						<span>Synchronizing your workspace...</span>
@@ -249,7 +249,7 @@ export default function Home() {
 						<p className='text-zinc-500 dark:text-zinc-400 mb-8 text-sm'>
 							Create a new project to start organizing your tasks and ideas with your new minimalist Kanban board.
 						</p>
-						<p className='text-xs font-semibold text-zinc-400 uppercase tracking-widest'>← Use the sidebar to create your first project</p>
+						<p className='text-xs font-semibold text-zinc-400 uppercase '>← Use the sidebar to create your first project</p>
 					</div>
 				}
 			</main>

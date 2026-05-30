@@ -26,7 +26,7 @@ export default function AboutPage() {
         <div className="max-w-7xl mx-auto px-6 sm:px-10 lg:px-16 flex justify-between items-center py-4">
           <Link
             href="/"
-            className="group flex items-center gap-2 font-bold text-2xl tracking-tight text-zinc-900 dark:text-white"
+            className="group flex items-center gap-2 font-bold text-2xl text-zinc-900 dark:text-white"
           >
             <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white shadow-lg shadow-blue-500/20 group-hover:scale-110 transition-transform">
               📊
@@ -54,7 +54,7 @@ export default function AboutPage() {
             </span>
             A Personal Side Project
           </div>
-          <h1 className="text-6xl sm:text-7xl lg:text-8xl tracking-tighter mb-8 bg-clip-text text-transparent bg-gradient-to-b from-zinc-900 via-zinc-900 to-zinc-500 dark:from-white dark:via-white dark:to-zinc-500">
+          <h1 className="text-6xl sm:text-7xl lg:text-8xl mb-8 bg-clip-text text-transparent bg-gradient-to-b from-zinc-900 via-zinc-900 to-zinc-500 dark:from-white dark:via-white dark:to-zinc-500">
             Organize work, <br />
             <span className="text-blue-600">effortlessly.</span>
           </h1>
@@ -74,7 +74,7 @@ export default function AboutPage() {
           <div className="absolute inset-0 bg-blue-600/5 dark:bg-blue-600/10 blur-3xl -z-10 rounded-full scale-90" />
           <div className="grid lg:grid-cols-2 gap-16 items-center">
             <div>
-              <h2 className="text-4xl sm:text-5xl font-bold tracking-tight mb-8">
+              <h2 className="text-4xl sm:text-5xl font-bold mb-8">
                 The inspiration <br />
                 <span className="text-blue-600 italic">behind the board.</span>
               </h2>
@@ -99,11 +99,11 @@ export default function AboutPage() {
               <div className="flex gap-4">
                 <div className="flex-1 bg-blue-600 p-8 rounded-3xl text-white">
                   <div className="text-3xl font-bold mb-1">100%</div>
-                  <div className="text-sm opacity-80 uppercase tracking-wider font-semibold">Free Forever</div>
+                  <div className="text-sm opacity-80 uppercase font-semibold">Free Forever</div>
                 </div>
                 <div className="flex-1 bg-zinc-200 dark:bg-zinc-800 p-8 rounded-3xl">
                   <div className="text-3xl font-bold mb-1">∞</div>
-                  <div className="text-sm text-zinc-500 uppercase tracking-wider font-semibold">Tinkering Potential</div>
+                  <div className="text-sm text-zinc-500 uppercase font-semibold">Tinkering Potential</div>
                 </div>
               </div>
             </div>
@@ -208,7 +208,7 @@ export default function AboutPage() {
 
       {/* Footer Branding */}
       <footer className="max-w-7xl mx-auto px-6 lg:px-16 py-12 border-t border-zinc-200 dark:border-zinc-800 text-center">
-        <p className="text-zinc-500 text-sm font-medium uppercase tracking-widest">
+        <p className="text-zinc-500 text-sm font-medium uppercase ">
           Build with ❤️ by Me • © 2026
         </p>
       </footer>

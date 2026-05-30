@@ -123,7 +123,7 @@ const ToastItem: React.FC<{toast: Toast; onRemove: (id: string) => void}> = ({to
 								toast.action?.onClick();
 								onRemove(toast.id);
 							}}
-							className='mt-2.5 text-xs font-bold text-zinc-900 dark:text-zinc-100 hover:text-zinc-600 dark:hover:text-zinc-400 transition-colors uppercase tracking-widest'>
+							className='mt-2.5 text-xs font-bold text-zinc-900 dark:text-zinc-100 hover:text-zinc-600 dark:hover:text-zinc-400 transition-colors uppercase '>
 							{toast.action.label}
 						</button>
 					)}

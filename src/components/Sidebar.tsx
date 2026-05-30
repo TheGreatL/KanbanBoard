@@ -342,7 +342,7 @@ export default function Sidebar({
           <div className="w-8 h-8 bg-blue-500 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20">
             <FolderKanban className="w-4 h-4 text-white" />
           </div>
-          <h1 className="text-base font-bold text-zinc-900 dark:text-zinc-100 tracking-tight">Kanban</h1>
+          <h1 className="text-base font-bold text-zinc-900 dark:text-zinc-100 ">Kanban</h1>
         </div>
         {onClose && (
           <button
@@ -356,7 +356,7 @@ export default function Sidebar({
 
       <div className="flex-1 overflow-y-auto hide-scrollbar p-3">
         <div className="flex items-center justify-between px-2 mb-2">
-          <h2 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Projects</h2>
+          <h2 className="text-xs font-semibold text-zinc-500 uppercase ">Projects</h2>
           <button
             onClick={() => {
               setProjectModalMode("create");
@@ -386,7 +386,7 @@ export default function Sidebar({
               <div className="space-y-1">
                 <button
                   onClick={() => setIsArchivedExpanded(!isArchivedExpanded)}
-                  className="flex items-center gap-1.5 w-full px-2 py-1.5 text-xs font-semibold text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors uppercase tracking-wider group"
+                  className="flex items-center gap-1.5 w-full px-2 py-1.5 text-xs font-semibold text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors uppercase group"
                 >
                   <ChevronRight
                     className={cn(
@@ -428,7 +428,7 @@ export default function Sidebar({
             <p className="text-sm font-bold text-zinc-900 dark:text-zinc-100 truncate leading-tight">
               {profile?.username || "—"}
             </p>
-            <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-widest">
+            <p className="text-[10px] font-semibold text-zinc-400 uppercase ">
               My account
             </p>
           </div>
