@@ -19,10 +19,11 @@ import {TransformWrapper, TransformComponent, useControls, useTransformEffect} f
 import Column, {ColumnType} from './Column';
 import TaskCard, {Task} from './TaskCard';
 import {supabase} from '@/lib/supabase';
-import {Tooltip, ActionIcon, Button, Avatar, Modal, Text, Group} from '@mantine/core';
+import {Tooltip, ActionIcon, Button, Avatar, Modal, Text, Group, Drawer} from '@mantine/core';
 import {useToast} from './ui/Toast';
-import {IconPlus, IconZoomIn, IconMaximize, IconColumns, IconShare, IconUsers, IconLayoutDashboard, IconLock, IconZoomOut} from '@tabler/icons-react';
+import {IconPlus, IconZoomIn, IconMaximize, IconColumns, IconShare, IconUsers, IconLayoutDashboard, IconLock, IconZoomOut, IconHistory} from '@tabler/icons-react';
 import ShareModal from './modals/ShareModal';
+import ProjectActivityLog from './ProjectActivityLog';
 import AddTaskModal from './modals/AddTaskModal';
 import AddColumnModal from './modals/AddColumnModal';
 import {BoardSkeleton} from './ui/Skeleton';
@@ -93,6 +94,7 @@ export default function KanbanBoard({projectId, onToggleSidebar}: KanbanBoardPro
 	const [isSharing, setIsSharing] = useState(false);
 	const [isAddingTask, setIsAddingTask] = useState(false);
 	const [isAddingColumn, setIsAddingColumn] = useState(false);
+	const [isActivityLogOpen, setIsActivityLogOpen] = useState(false);
 	const [selectedColumnId, setSelectedColumnId] = useState('');
 
 	const [pendingArchiveDrag, setPendingArchiveDrag] = useState<{
@@ -1065,6 +1067,16 @@ export default function KanbanBoard({projectId, onToggleSidebar}: KanbanBoardPro
 									Share
 								</Button>
 							)}
+							<Tooltip label="Activity Log" position="bottom" withArrow>
+								<ActionIcon
+									variant="default"
+									radius="xl"
+									size="lg"
+									onClick={() => setIsActivityLogOpen(true)}
+								>
+									<IconHistory size={16} />
+								</ActionIcon>
+							</Tooltip>
 						</div>
 					</div>
 				</div>
@@ -1190,6 +1202,16 @@ export default function KanbanBoard({projectId, onToggleSidebar}: KanbanBoardPro
 					</Button>
 				</Group>
 			</Modal>
+			<Drawer
+				opened={isActivityLogOpen}
+				onClose={() => setIsActivityLogOpen(false)}
+				title="Project Activity Log"
+				position="right"
+				size="md"
+				padding="0"
+			>
+				<ProjectActivityLog projectId={projectId} />
+			</Drawer>
 		</div>
 	);
 }

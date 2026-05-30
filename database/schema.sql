@@ -69,6 +69,18 @@ CREATE TABLE IF NOT EXISTS tasks (
   previous_column_id UUID REFERENCES columns(id) ON DELETE SET NULL
 );
 
+-- Project Activities (Audit Log)
+CREATE TABLE IF NOT EXISTS project_activities (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  project_id UUID REFERENCES projects ON DELETE CASCADE NOT NULL,
+  user_id UUID REFERENCES profiles(id) ON DELETE SET NULL,
+  action_type TEXT NOT NULL,
+  entity_type TEXT NOT NULL,
+  entity_id UUID NOT NULL,
+  details JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- 2. Indices for performance
 CREATE INDEX IF NOT EXISTS idx_projects_archived_at ON projects(archived_at);
 CREATE INDEX IF NOT EXISTS idx_columns_archived_at ON columns(archived_at);
@@ -80,6 +92,8 @@ CREATE INDEX IF NOT EXISTS idx_columns_is_archive_pool ON columns(is_archive_poo
 CREATE INDEX IF NOT EXISTS idx_tasks_previous_column_id ON tasks(previous_column_id);
 CREATE INDEX IF NOT EXISTS idx_tasks_project_id ON tasks(project_id);
 CREATE UNIQUE INDEX IF NOT EXISTS unique_project_archive_pool ON columns (project_id) WHERE is_archive_pool = true;
+CREATE INDEX IF NOT EXISTS idx_project_activities_project_id ON project_activities(project_id);
+CREATE INDEX IF NOT EXISTS idx_project_activities_created_at ON project_activities(created_at DESC);
 
 -- 3. Security Functions (to break RLS recursion)
 -- Function to get project owner without triggering RLS logic loops
@@ -128,10 +142,12 @@ ALTER TABLE project_members ENABLE ROW LEVEL SECURITY;
 ALTER TABLE columns ENABLE ROW LEVEL SECURITY;
 ALTER TABLE tasks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE project_share_links ENABLE ROW LEVEL SECURITY;
+ALTER TABLE project_activities ENABLE ROW LEVEL SECURITY;
 
 -- Set replica identity to FULL for comprehensive real-time payloads
 ALTER TABLE columns REPLICA IDENTITY FULL;
 ALTER TABLE tasks REPLICA IDENTITY FULL;
+ALTER TABLE project_activities REPLICA IDENTITY FULL;
 
 -- Profiles Policies
 DROP POLICY IF EXISTS "Users can search and view all profiles" ON profiles;
@@ -222,6 +238,11 @@ CREATE POLICY "Authenticated users can view share links" ON project_share_links
   FOR SELECT
   USING (auth.role() = 'authenticated');
 
+-- Project Activities Policies
+DROP POLICY IF EXISTS "Users can view activities of their projects" ON project_activities;
+CREATE POLICY "Users can view activities of their projects" ON project_activities
+  FOR SELECT USING (is_project_member(project_id, auth.uid()));
+
 -- 5. Triggers & Functions
 
 -- Function to securely redeem share links (bypasses RLS)
@@ -311,12 +332,73 @@ CREATE TRIGGER on_project_created
   AFTER INSERT ON projects
   FOR EACH ROW EXECUTE PROCEDURE handle_new_project();
 
+-- Function for activity log
+CREATE OR REPLACE FUNCTION log_project_activity() RETURNS TRIGGER AS $$
+DECLARE
+  v_project_id UUID;
+  v_user_id UUID;
+  v_entity_id UUID;
+  v_details JSONB;
+BEGIN
+  v_user_id := auth.uid();
+  IF v_user_id IS NULL THEN
+    IF TG_OP = 'DELETE' THEN RETURN OLD; ELSE RETURN NEW; END IF;
+  END IF;
+
+  IF TG_TABLE_NAME = 'projects' THEN
+    v_project_id := COALESCE(NEW.id, OLD.id);
+    v_entity_id := COALESCE(NEW.id, OLD.id);
+  ELSE
+    v_project_id := COALESCE(NEW.project_id, OLD.project_id);
+    v_entity_id := COALESCE(NEW.id, OLD.id);
+  END IF;
+
+  IF TG_OP = 'INSERT' THEN
+    v_details := jsonb_build_object('new', row_to_json(NEW));
+  ELSIF TG_OP = 'UPDATE' THEN
+    v_details := jsonb_build_object('old', row_to_json(OLD), 'new', row_to_json(NEW));
+  ELSIF TG_OP = 'DELETE' THEN
+    v_details := jsonb_build_object('old', row_to_json(OLD));
+  END IF;
+
+  INSERT INTO public.project_activities (project_id, user_id, action_type, entity_type, entity_id, details)
+  VALUES (v_project_id, v_user_id, TG_OP, TG_TABLE_NAME, v_entity_id, v_details);
+
+  IF TG_OP = 'DELETE' THEN
+    RETURN OLD;
+  ELSE
+    RETURN NEW;
+  END IF;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS log_tasks_activity ON tasks;
+CREATE TRIGGER log_tasks_activity
+  AFTER INSERT OR UPDATE OR DELETE ON tasks
+  FOR EACH ROW EXECUTE PROCEDURE log_project_activity();
+
+DROP TRIGGER IF EXISTS log_columns_activity ON columns;
+CREATE TRIGGER log_columns_activity
+  AFTER INSERT OR UPDATE OR DELETE ON columns
+  FOR EACH ROW EXECUTE PROCEDURE log_project_activity();
+
+DROP TRIGGER IF EXISTS log_projects_activity ON projects;
+CREATE TRIGGER log_projects_activity
+  AFTER INSERT OR UPDATE OR DELETE ON projects
+  FOR EACH ROW EXECUTE PROCEDURE log_project_activity();
+
+DROP TRIGGER IF EXISTS log_project_members_activity ON project_members;
+CREATE TRIGGER log_project_members_activity
+  AFTER INSERT OR UPDATE OR DELETE ON project_members
+  FOR EACH ROW EXECUTE PROCEDURE log_project_activity();
+
 -- 6. Real-time Setup
 -- Enable real-time for ALL relevant tables
 ALTER PUBLICATION supabase_realtime ADD TABLE projects;
 ALTER PUBLICATION supabase_realtime ADD TABLE project_members;
 ALTER PUBLICATION supabase_realtime ADD TABLE columns;
 ALTER PUBLICATION supabase_realtime ADD TABLE tasks;
+ALTER PUBLICATION supabase_realtime ADD TABLE project_activities;
 
 -- 7. Data Helpers & Maintenance (Self-Upgrading)
 DO $$ 
