@@ -14,6 +14,8 @@ A highly interactive, Figma-inspired Kanban board built with Next.js 15 and Supa
 -   **📎 Task Attachments**: Easily upload and manage file attachments for each task.
 -   **🔍 Task Preview**: Quick preview dialogs to view task details without losing context.
 -   **📦 Archive Alerts**: Confirmation alerts when dropping tasks into the archive to prevent accidental deletions.
+-   **🔗 Shareable Links**: Generate secure tokens to share project boards with anonymous users.
+-   **📜 Activity Log**: Comprehensive audit trail tracking task, column, and member changes in real-time.
 
 ## 🚀 Tech Stack
 
