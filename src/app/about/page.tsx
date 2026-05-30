@@ -54,7 +54,7 @@ export default function AboutPage() {
             </span>
             A Personal Side Project
           </div>
-          <h1 className="text-6xl sm:text-7xl lg:text-8xl mb-8 bg-clip-text text-transparent bg-gradient-to-b from-zinc-900 via-zinc-900 to-zinc-500 dark:from-white dark:via-white dark:to-zinc-500">
+          <h1 className="font-bold text-6xl sm:text-7xl lg:text-8xl mb-8 bg-clip-text text-transparent bg-gradient-to-b from-zinc-900 via-zinc-900 to-zinc-500 dark:from-white dark:via-white dark:to-zinc-500">
             Organize work, <br />
             <span className="text-blue-600">effortlessly.</span>
           </h1>
@@ -209,7 +209,7 @@ export default function AboutPage() {
       {/* Footer Branding */}
       <footer className="max-w-7xl mx-auto px-6 lg:px-16 py-12 border-t border-zinc-200 dark:border-zinc-800 text-center">
         <p className="text-zinc-500 text-sm font-medium uppercase ">
-          Build with ❤️ by Me • © 2026
+          Build by Ken Andrew Carlon • © 2026
         </p>
       </footer>
     </div>
