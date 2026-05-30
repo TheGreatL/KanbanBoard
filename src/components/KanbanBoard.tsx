@@ -19,7 +19,7 @@ import {TransformWrapper, TransformComponent, useControls, useTransformEffect} f
 import Column, {ColumnType} from './Column';
 import TaskCard, {Task} from './TaskCard';
 import {supabase} from '@/lib/supabase';
-import {Tooltip, ActionIcon, Button, Avatar} from '@mantine/core';
+import {Tooltip, ActionIcon, Button, Avatar, Modal, Text, Group} from '@mantine/core';
 import {useToast} from './ui/Toast';
 import {IconPlus, IconZoomIn, IconMaximize, IconColumns, IconShare, IconUsers, IconLayoutDashboard, IconLock, IconZoomOut} from '@tabler/icons-react';
 import ShareModal from './modals/ShareModal';
@@ -94,6 +94,57 @@ export default function KanbanBoard({projectId, onToggleSidebar}: KanbanBoardPro
 	const [isAddingTask, setIsAddingTask] = useState(false);
 	const [isAddingColumn, setIsAddingColumn] = useState(false);
 	const [selectedColumnId, setSelectedColumnId] = useState('');
+
+	const [pendingArchiveDrag, setPendingArchiveDrag] = useState<{
+		activeId: string;
+		targetColumnId: string;
+		initialColumnId: string;
+		newPos: string;
+		activeTaskInState: Task;
+	} | null>(null);
+
+	const confirmArchiveDrag = async () => {
+		if (!pendingArchiveDrag) return;
+		const {activeId, targetColumnId, newPos, activeTaskInState, initialColumnId} = pendingArchiveDrag;
+		setPendingArchiveDrag(null);
+		const now = new Date().toISOString();
+
+		updateTasks((prev) =>
+			prev.map((t) =>
+				t.id === activeId ? {...t, position: newPos, archived_at: now, previous_column_id: initialColumnId} : t
+			)
+		);
+
+		try {
+			const {error} = await supabase
+				.from('tasks')
+				.update({column_id: targetColumnId, position: newPos, archived_at: now, previous_column_id: initialColumnId})
+				.eq('id', activeId);
+			if (error) throw error;
+
+			showToast({
+				type: 'success',
+				title: 'Task Archived',
+				message: `"${activeTaskInState.title}" moved to Archive.`,
+			});
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		} catch (err: any) {
+			console.error('Task persistence error:', err);
+			showToast({
+				type: 'error',
+				title: 'Sync Error',
+				message: 'Could not save changes. Refreshing...',
+			});
+			fetchBoardData(); // Force sync with server
+		}
+	};
+
+	const cancelArchiveDrag = () => {
+		if (!pendingArchiveDrag) return;
+		const {activeId, initialColumnId} = pendingArchiveDrag;
+		updateTasks((prev) => prev.map((t) => (t.id === activeId ? {...t, column_id: initialColumnId} : t)));
+		setPendingArchiveDrag(null);
+	};
 
 	const columnsRef = useRef<ColumnType[]>([]);
 	const tasksRef = useRef<Task[]>([]);
@@ -861,6 +912,18 @@ export default function KanbanBoard({projectId, onToggleSidebar}: KanbanBoardPro
 				nextTask ? nextTask.position : null
 			);
 
+			const targetColumn = currentCols.find((c) => c.id === targetColumnId);
+			if (targetColumn?.is_archive_pool && initialColumnId && initialColumnId !== targetColumnId) {
+				setPendingArchiveDrag({
+					activeId:String(activeId),
+					targetColumnId,
+					initialColumnId,
+					newPos,
+					activeTaskInState,
+				});
+				return;
+			}
+
 			updateTasks((prev) => prev.map((t) => (t.id === activeId ? {...t, position: newPos} : t)));
 
 			try {
@@ -1112,6 +1175,19 @@ export default function KanbanBoard({projectId, onToggleSidebar}: KanbanBoardPro
 				projectId={projectId}
 				currentUserId={currentUserId}
 			/>
+			<Modal opened={!!pendingArchiveDrag} onClose={cancelArchiveDrag} title="Archive Task" centered>
+				<Text size="sm" mb="lg">
+					Are you sure you want to drop this task into the Archive column? It will be hidden from the main board until restored.
+				</Text>
+				<Group justify="flex-end">
+					<Button variant="default" onClick={cancelArchiveDrag}>
+						Cancel
+					</Button>
+					<Button color="red" onClick={confirmArchiveDrag}>
+						Archive
+					</Button>
+				</Group>
+			</Modal>
 		</div>
 	);
 }
