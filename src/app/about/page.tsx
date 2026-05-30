@@ -54,7 +54,7 @@ export default function AboutPage() {
             </span>
             A Personal Side Project
           </div>
-          <h1 className="text-6xl sm:text-7xl lg:text-8xl font-black tracking-tighter mb-8 bg-clip-text text-transparent bg-gradient-to-b from-zinc-900 via-zinc-900 to-zinc-500 dark:from-white dark:via-white dark:to-zinc-500">
+          <h1 className="text-6xl sm:text-7xl lg:text-8xl tracking-tighter mb-8 bg-clip-text text-transparent bg-gradient-to-b from-zinc-900 via-zinc-900 to-zinc-500 dark:from-white dark:via-white dark:to-zinc-500">
             Organize work, <br />
             <span className="text-blue-600">effortlessly.</span>
           </h1>
@@ -183,7 +183,7 @@ export default function AboutPage() {
         {/* CTA Section */}
         <section className="relative overflow-hidden bg-zinc-900 dark:bg-white rounded-[3rem] p-12 sm:p-20 text-center text-white dark:text-zinc-900 border-4 border-blue-600/20">
           <div className="absolute inset-0 bg-gradient-to-br from-blue-600/20 to-transparent pointer-events-none" />
-          <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black mb-8 relative z-10">
+          <h2 className="text-4xl sm:text-5xl lg:text-6xl mb-8 relative z-10">
             Want to give it a spin?
           </h2>
           <p className="text-lg sm:text-xl opacity-80 mb-12 max-w-xl mx-auto relative z-10">
@@ -192,7 +192,7 @@ export default function AboutPage() {
           <div className="flex flex-col sm:flex-row gap-6 justify-center items-center relative z-10">
             <Link
               href="/auth"
-              className="w-full sm:w-auto px-10 py-5 bg-blue-600 text-white rounded-2xl font-black text-xl hover:scale-105 active:scale-95 transition-all shadow-2xl shadow-blue-500/50"
+              className="w-full sm:w-auto px-10 py-5 bg-blue-600 text-white rounded-2xl text-xl hover:scale-105 active:scale-95 transition-all shadow-2xl shadow-blue-500/50"
             >
               Sign Up / Log In
             </Link>
