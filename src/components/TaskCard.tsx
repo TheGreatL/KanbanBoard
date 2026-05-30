@@ -65,6 +65,7 @@ export default function TaskCard({ task, columnColor = "zinc", deleteTask, updat
   const [editContent, setEditContent] = useState(task.content ?? "");
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isRestoreDialogOpen, setIsRestoreDialogOpen] = useState(false);
+  const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
   const titleInputRef = useRef<HTMLInputElement>(null);
 
   const isArchived = !!task.archived_at;
@@ -137,14 +138,17 @@ export default function TaskCard({ task, columnColor = "zinc", deleteTask, updat
           </Tooltip>
         )}
 
-        <div className="flex flex-col gap-1.5 p-3 pl-1 flex-1 min-w-0">
+        <div 
+          className="flex flex-col gap-1.5 p-3 pl-1 flex-1 min-w-0 cursor-pointer"
+          onClick={() => setIsViewDialogOpen(true)}
+        >
           {task.title && (
             <p className="font-semibold text-zinc-900 dark:text-zinc-100 text-sm leading-snug break-words">
               {task.title}
             </p>
           )}
           {task.content && (
-            <p className="whitespace-pre-wrap text-zinc-500 dark:text-zinc-400 text-xs leading-relaxed break-words font-medium opacity-80 group-hover:opacity-100 transition-opacity">
+            <p className="whitespace-pre-wrap text-zinc-500 dark:text-zinc-400 text-xs leading-relaxed break-words font-medium opacity-80 group-hover:opacity-100 transition-opacity line-clamp-3">
               {task.content}
             </p>
           )}
@@ -220,6 +224,32 @@ export default function TaskCard({ task, columnColor = "zinc", deleteTask, updat
           </div>
         </div>
       </div>
+
+      <Modal opened={isViewDialogOpen} onClose={() => setIsViewDialogOpen(false)} title={<Group gap="xs"><IconCheck size={18} className="text-zinc-400"/><Text fw={600}>View Task</Text></Group>} centered>
+        <div className="flex flex-col gap-4">
+          <Text fw={700} size="lg" c="var(--mantine-color-text)" style={{ wordBreak: 'break-word' }}>{task.title}</Text>
+          {task.content && (
+            <Text size="sm" c="dimmed" style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{task.content}</Text>
+          )}
+          {task.created_at && (
+             <Group gap="xs" mt="sm">
+               <IconCalendar size={14} className="text-zinc-400" />
+               <Text size="xs" c="dimmed">Created: {formatDate(task.created_at)}</Text>
+             </Group>
+          )}
+        </div>
+        <Group justify="flex-end" mt="xl">
+          <Button variant="subtle" color="gray" onClick={() => setIsViewDialogOpen(false)}>Close</Button>
+          {isEditable && (
+            <Button color="blue" leftSection={<IconPencil size={16} />} onClick={() => {
+              setIsViewDialogOpen(false);
+              setEditTitle(task.title ?? "");
+              setEditContent(task.content ?? "");
+              setIsEditing(true);
+            }}>Edit Task</Button>
+          )}
+        </Group>
+      </Modal>
 
       <Modal opened={isEditing} onClose={cancelEdit} title={<Group gap="xs"><IconPencil size={18} className="text-zinc-400"/><Text fw={600}>Edit Task</Text></Group>} centered>
         <div className="flex flex-col gap-3">
