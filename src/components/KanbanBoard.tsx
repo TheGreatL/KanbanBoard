@@ -244,7 +244,7 @@ export default function KanbanBoard({projectId, onToggleSidebar}: KanbanBoardPro
 			.or('archived_at.is.null,is_archive_pool.eq.true')
 			.order('position');
 
-		const finalCols = cols || [];
+		const finalCols = (cols as ColumnType[]) || [];
 
 		// Sort columns: regular columns stay in order, archived pool always goes last
 		const sortedCols = [...finalCols].sort((a, b) => {
@@ -338,7 +338,7 @@ export default function KanbanBoard({projectId, onToggleSidebar}: KanbanBoardPro
 					table: 'columns',
 					filter: `project_id=eq.${projectId}`,
 				},
-				async (payload) => {
+				async (payload: any) => {
 					if (payload.eventType === 'INSERT') {
 						const newCol = payload.new as ColumnType;
 						updateColumns((prev) => {
@@ -366,7 +366,7 @@ export default function KanbanBoard({projectId, onToggleSidebar}: KanbanBoardPro
 					table: 'tasks',
 					filter: `project_id=eq.${projectId}`,
 				},
-				(payload) => {
+				(payload: any) => {
 					// Since we can't easily filter tasks by project_id in real-time filter (no column),
 					// we filter locally using the current column list.
 					if (payload.eventType === 'INSERT') {
@@ -405,7 +405,7 @@ export default function KanbanBoard({projectId, onToggleSidebar}: KanbanBoardPro
 			})
 			.on('presence', {event: 'join'}, () => {})
 			.on('presence', {event: 'leave'}, () => {})
-			.subscribe(async (status) => {
+			.subscribe(async (status: any) => {
 				if (status === 'SUBSCRIBED') {
 					const {
 						data: {user},

@@ -75,7 +75,7 @@ export default function ShareModal({isOpen, onClose, projectId, currentUserId}: 
 		setIsSearching(true);
 		const {data} = await supabase.from('profiles').select('id, username, avatar_url').ilike('username', `%${query}%`).limit(10);
 
-		const filtered = (data || []).filter((u) => !memberUserIds.has(u.id));
+		const filtered = (data || []).filter((u: any) => !memberUserIds.has(u.id));
 		setSearchResults(filtered.slice(0, 5));
 		setIsSearching(false);
 	};

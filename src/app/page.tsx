@@ -29,14 +29,15 @@ export default function Home() {
 		const {data} = await supabase.from('projects').select('*').order('created_at', {ascending: false});
 
 		if (data) {
-			setProjects(data);
+			const projectsData = data as Project[];
+			setProjects(projectsData);
 			// Only set active project from UNARCHIVED ones if none is active
 			setActiveProjectId((prev) => {
 				if (prev) return prev;
-				const firstActive = data.find((p) => !p.archived_at);
+				const firstActive = projectsData.find((p) => !p.archived_at);
 				return (
 					firstActive ? firstActive.id
-					: data.length > 0 ? data[0].id
+					: projectsData.length > 0 ? projectsData[0].id
 					: null
 				);
 			});
@@ -60,7 +61,7 @@ export default function Home() {
 
 		checkUser();
 
-		const {data: authListener} = supabase.auth.onAuthStateChange((event, session) => {
+		const {data: authListener} = supabase.auth.onAuthStateChange((event: any, session: any) => {
 			if (!session) {
 				router.push('/about');
 			} else {
