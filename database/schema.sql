@@ -202,13 +202,15 @@ CREATE POLICY "Owners and editors can delete tasks" ON tasks
 CREATE OR REPLACE FUNCTION handle_new_user() 
 RETURNS TRIGGER AS $$
 BEGIN
-  INSERT INTO public.profiles (id, username)
+  INSERT INTO public.profiles (id, username, avatar_url)
   VALUES (
     new.id, 
     COALESCE(
-      new.raw_user_meta_data->>'username', 
+      new.raw_user_meta_data->>'user_name', 
+      new.raw_user_meta_data->>'name',
       'user_' || substr(new.id::text, 1, 8)
-    )
+    ),
+    new.raw_user_meta_data->>'avatar_url'
   );
   RETURN new;
 END;
