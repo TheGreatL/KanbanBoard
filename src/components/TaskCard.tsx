@@ -357,9 +357,16 @@ export default function TaskCard({ task, columnColor = "zinc", deleteTask, updat
             label="Add Attachments"
             placeholder="Select files or images"
             multiple
-            value={newFiles}
-            onChange={setNewFiles}
-            clearable
+            value={[]}
+            onChange={(payload) => {
+              if (payload && payload.length > 0) {
+                setNewFiles(prev => {
+                  const existing = new Set(prev.map(f => `${f.name}-${f.size}`));
+                  const toAdd = payload.filter(f => !existing.has(`${f.name}-${f.size}`));
+                  return [...prev, ...toAdd];
+                });
+              }
+            }}
           />
           {newFiles.length > 0 && (
             <div>

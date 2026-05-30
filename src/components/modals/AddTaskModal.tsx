@@ -149,9 +149,16 @@ export default function AddTaskModal({
               }
               placeholder="Upload files or images"
               multiple
-              value={files}
-              onChange={setFiles}
-              clearable
+              value={[]}
+              onChange={(payload) => {
+                if (payload && payload.length > 0) {
+                  setFiles(prev => {
+                    const existing = new Set(prev.map(f => `${f.name}-${f.size}`));
+                    const toAdd = payload.filter(f => !existing.has(`${f.name}-${f.size}`));
+                    return [...prev, ...toAdd];
+                  });
+                }
+              }}
             />
             {files.length > 0 && (
               <div>
