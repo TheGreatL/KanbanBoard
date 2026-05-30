@@ -53,6 +53,7 @@ CREATE TABLE IF NOT EXISTS tasks (
   title TEXT,
   content TEXT NOT NULL,
   position TEXT NOT NULL,
+  attachments JSONB DEFAULT '[]'::jsonb,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   archived_at TIMESTAMPTZ DEFAULT NULL,
   previous_column_id UUID REFERENCES columns(id) ON DELETE SET NULL
@@ -314,3 +315,21 @@ CREATE POLICY "Users can delete their own avatar" ON storage.objects
     bucket_id = 'avatars' AND
     (storage.foldername(name))[1] = auth.uid()::text
   );
+
+INSERT INTO storage.buckets (id, name, public)
+SELECT 'task-attachments', 'task-attachments', true
+WHERE NOT EXISTS (
+    SELECT 1 FROM storage.buckets WHERE id = 'task-attachments'
+);
+
+CREATE POLICY "Allow public viewing of task attachments" ON storage.objects
+  FOR SELECT USING (bucket_id = 'task-attachments');
+
+CREATE POLICY "Allow authenticated users to upload task attachments" ON storage.objects
+  FOR INSERT WITH CHECK (bucket_id = 'task-attachments' AND auth.role() = 'authenticated');
+
+CREATE POLICY "Allow authenticated users to update task attachments" ON storage.objects
+  FOR UPDATE USING (bucket_id = 'task-attachments' AND auth.role() = 'authenticated');
+
+CREATE POLICY "Allow authenticated users to delete task attachments" ON storage.objects
+  FOR DELETE USING (bucket_id = 'task-attachments' AND auth.role() = 'authenticated');

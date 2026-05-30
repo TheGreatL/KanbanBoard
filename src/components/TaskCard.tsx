@@ -2,9 +2,10 @@
 import { cn } from "@/lib/utils";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { IconTrash, IconPencil, IconX, IconCheck, IconCalendar, IconGripVertical, IconRotateClockwise } from "@tabler/icons-react";
+import { IconTrash, IconPencil, IconX, IconCheck, IconCalendar, IconGripVertical, IconRotateClockwise, IconPaperclip, IconMagnet } from "@tabler/icons-react";
 import { useState, useRef, useEffect } from "react";
-import { Tooltip, Modal, Button, Text, Group, ActionIcon, TextInput, Textarea } from '@mantine/core';
+import { Tooltip, Modal, Button, Text, Group, ActionIcon, TextInput, Textarea, FileInput, Badge, Image as MantineImage } from '@mantine/core';
+import { supabase } from "@/lib/supabase";
 
 export interface Task {
   id: string;
@@ -16,13 +17,14 @@ export interface Task {
   created_at?: string;
   archived_at?: string | null;
   previous_column_id?: string | null;
+  attachments?: { name: string; url: string; type: string; path: string }[];
 }
 
 interface TaskCardProps {
   task: Task;
   columnColor?: string;
   deleteTask: (id: string) => void;
-  updateTask?: (id: string, title: string, content: string) => Promise<void>;
+  updateTask?: (id: string, title: string, content: string, attachments?: any[]) => Promise<void>;
   restoreTask?: (id: string, targetColumnId: string) => Promise<void>;
   isOverlay?: boolean;
   isEditable?: boolean;
@@ -63,6 +65,9 @@ export default function TaskCard({ task, columnColor = "zinc", deleteTask, updat
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(task.title ?? "");
   const [editContent, setEditContent] = useState(task.content ?? "");
+  const [editAttachments, setEditAttachments] = useState<{ name: string; url: string; type: string; path: string }[]>(task.attachments ?? []);
+  const [newFiles, setNewFiles] = useState<File[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isRestoreDialogOpen, setIsRestoreDialogOpen] = useState(false);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
@@ -74,7 +79,8 @@ export default function TaskCard({ task, columnColor = "zinc", deleteTask, updat
   useEffect(() => {
     setEditTitle((prev: string) => prev !== task.title ? (task.title ?? "") : prev);
     setEditContent((prev: string) => prev !== task.content ? (task.content ?? "") : prev);
-  }, [task.title, task.content]);
+    setEditAttachments(task.attachments ?? []);
+  }, [task.title, task.content, task.attachments]);
 
   useEffect(() => {
     if (isEditing && titleInputRef.current) {
@@ -86,9 +92,37 @@ export default function TaskCard({ task, columnColor = "zinc", deleteTask, updat
     const trimTitle = editTitle.trim();
     const trimContent = editContent.trim();
     if (!trimTitle && !trimContent) return;
-    if (updateTask) {
-      await updateTask(task.id, trimTitle, trimContent);
+    
+    let finalAttachments = [...editAttachments];
+    
+    if (newFiles.length > 0) {
+      setIsUploading(true);
+      for (const file of newFiles) {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${Math.random().toString(36).substring(2, 15)}_${Date.now()}.${fileExt}`;
+        const filePath = `${fileName}`;
+        
+        const { error: uploadError } = await supabase.storage
+          .from('task-attachments')
+          .upload(filePath, file);
+          
+        if (!uploadError) {
+          const { data } = supabase.storage.from('task-attachments').getPublicUrl(filePath);
+          finalAttachments.push({
+            name: file.name,
+            url: data.publicUrl,
+            type: file.type,
+            path: filePath
+          });
+        }
+      }
+      setIsUploading(false);
     }
+    
+    if (updateTask) {
+      await updateTask(task.id, trimTitle, trimContent, finalAttachments);
+    }
+    setNewFiles([]);
     setIsEditing(false);
   };
 
@@ -97,6 +131,8 @@ export default function TaskCard({ task, columnColor = "zinc", deleteTask, updat
       setIsEditing(false);
       setEditTitle(task.title ?? "");
       setEditContent(task.content ?? "");
+      setEditAttachments(task.attachments ?? []);
+      setNewFiles([]);
     }
   };
 
@@ -104,6 +140,8 @@ export default function TaskCard({ task, columnColor = "zinc", deleteTask, updat
     setIsEditing(false);
     setEditTitle(task.title ?? "");
     setEditContent(task.content ?? "");
+    setEditAttachments(task.attachments ?? []);
+    setNewFiles([]);
   };
 
   if (isDragging && !isOverlay) {
@@ -142,6 +180,17 @@ export default function TaskCard({ task, columnColor = "zinc", deleteTask, updat
           className="flex flex-col gap-1.5 p-3 pl-1 flex-1 min-w-0 cursor-pointer"
           onClick={() => setIsViewDialogOpen(true)}
         >
+          {task.attachments && task.attachments.find(a => a.type.startsWith('image/')) && (
+            <div className="w-full h-24 mb-1 rounded-md overflow-hidden bg-zinc-100 dark:bg-zinc-800">
+              <MantineImage 
+                src={task.attachments.find(a => a.type.startsWith('image/'))?.url} 
+                alt="Cover" 
+                h="100%" 
+                w="100%" 
+                fit="cover" 
+              />
+            </div>
+          )}
           {task.title && (
             <p className="font-semibold text-zinc-900 dark:text-zinc-100 text-sm leading-snug break-words">
               {task.title}
@@ -154,14 +203,22 @@ export default function TaskCard({ task, columnColor = "zinc", deleteTask, updat
           )}
 
           <div className="flex items-center justify-between mt-1">
-            {task.created_at ? (
-              <span className="flex items-center gap-1.5 text-[10px] text-zinc-400 dark:text-zinc-500 font-semibold select-none">
-                <IconCalendar size={12} />
-                {formatDate(task.created_at)}
-              </span>
-            ) : (
-              <span />
-            )}
+            <Group gap="xs">
+              {task.created_at ? (
+                <span className="flex items-center gap-1.5 text-[10px] text-zinc-400 dark:text-zinc-500 font-semibold select-none">
+                  <IconCalendar size={12} />
+                  {formatDate(task.created_at)}
+                </span>
+              ) : (
+                <span />
+              )}
+              {task.attachments && task.attachments.length > 0 && (
+                <span className="flex items-center gap-1 text-[10px] text-zinc-400 dark:text-zinc-500 font-semibold select-none">
+                  <IconPaperclip size={12} />
+                  {task.attachments.length}
+                </span>
+              )}
+            </Group>
 
             <div className={cn(
               "flex items-center gap-1",
@@ -195,6 +252,8 @@ export default function TaskCard({ task, columnColor = "zinc", deleteTask, updat
                         e.stopPropagation();
                         setEditTitle(task.title ?? "");
                         setEditContent(task.content ?? "");
+                        setEditAttachments(task.attachments ?? []);
+                        setNewFiles([]);
                         setIsEditing(true);
                       }}
                       onPointerDown={(e) => e.stopPropagation()}
@@ -237,6 +296,27 @@ export default function TaskCard({ task, columnColor = "zinc", deleteTask, updat
                <Text size="xs" c="dimmed">Created: {formatDate(task.created_at)}</Text>
              </Group>
           )}
+          {task.attachments && task.attachments.length > 0 && (
+            <div className="mt-2 border-t border-zinc-100 dark:border-zinc-800 pt-3">
+              <Text fw={600} size="sm" mb="xs" c="var(--mantine-color-text)">Attachments</Text>
+              <div className="flex flex-wrap gap-3">
+                {task.attachments.map((att, i) => (
+                  <div key={i} className="rounded-md border border-zinc-200 dark:border-zinc-700 overflow-hidden relative group" style={{ maxWidth: '200px' }}>
+                    {att.type.startsWith('image/') ? (
+                      <a href={att.url} target="_blank" rel="noopener noreferrer" className="block">
+                        <MantineImage src={att.url} alt={att.name} h={120} w="auto" fit="cover" fallbackSrc="https://placehold.co/200x120?text=Image+Error" />
+                      </a>
+                    ) : (
+                      <a href={att.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 p-3 bg-zinc-50 dark:bg-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors h-full">
+                        <IconPaperclip size={20} className="text-zinc-500 shrink-0" />
+                        <Text size="xs" truncate fw={500}>{att.name}</Text>
+                      </a>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
         <Group justify="flex-end" mt="xl">
           <Button variant="subtle" color="gray" onClick={() => setIsViewDialogOpen(false)}>Close</Button>
@@ -245,6 +325,8 @@ export default function TaskCard({ task, columnColor = "zinc", deleteTask, updat
               setIsViewDialogOpen(false);
               setEditTitle(task.title ?? "");
               setEditContent(task.content ?? "");
+              setEditAttachments(task.attachments ?? []);
+              setNewFiles([]);
               setIsEditing(true);
             }}>Edit Task</Button>
           )}
@@ -271,10 +353,64 @@ export default function TaskCard({ task, columnColor = "zinc", deleteTask, updat
             maxRows={8}
             autosize
           />
+          <FileInput
+            label="Add Attachments"
+            placeholder="Select files or images"
+            multiple
+            value={newFiles}
+            onChange={setNewFiles}
+            clearable
+          />
+          {newFiles.length > 0 && (
+            <div>
+              <Text size="xs" fw={600} mb={4}>New Files to Upload</Text>
+              <div className="flex flex-wrap gap-2">
+                {newFiles.map((file, i) => (
+                  <div key={i} className="relative group border border-zinc-200 dark:border-zinc-700 rounded-md overflow-hidden" style={{ width: '80px', height: '80px' }}>
+                    {file.type.startsWith('image/') ? (
+                      <MantineImage src={URL.createObjectURL(file)} w="100%" h="100%" fit="cover" />
+                    ) : (
+                      <div className="flex flex-col items-center justify-center h-full bg-zinc-50 dark:bg-zinc-800 p-2">
+                        <IconPaperclip size={20} className="text-zinc-400 mb-1" />
+                        <Text size="xs" truncate w="100%" ta="center">{file.name}</Text>
+                      </div>
+                    )}
+                    <ActionIcon 
+                      size="sm" 
+                      color="red" 
+                      variant="filled" 
+                      className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={() => setNewFiles(newFiles.filter((_, idx) => idx !== i))}
+                    >
+                      <IconX size={12} />
+                    </ActionIcon>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          {editAttachments.length > 0 && (
+            <div>
+              <Text size="xs" fw={600} mb={4}>Current Attachments</Text>
+              <div className="flex flex-col gap-2">
+                {editAttachments.map((att, i) => (
+                  <Group key={i} justify="space-between" wrap="nowrap" className="p-2 border border-zinc-200 dark:border-zinc-700 rounded-md bg-zinc-50 dark:bg-zinc-800/50">
+                    <Group gap="xs" wrap="nowrap" style={{ overflow: 'hidden' }}>
+                      {att.type.startsWith('image/') ? <IconMagnet size={16} className="text-zinc-500 shrink-0"/> : <IconPaperclip size={16} className="text-zinc-500 shrink-0"/>}
+                      <Text size="xs" truncate>{att.name}</Text>
+                    </Group>
+                    <ActionIcon size="sm" color="red" variant="subtle" onClick={() => setEditAttachments(editAttachments.filter((_, idx) => idx !== i))}>
+                      <IconX size={14} />
+                    </ActionIcon>
+                  </Group>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
         <Group justify="flex-end" mt="xl">
           <Button variant="subtle" color="gray" onClick={cancelEdit}>Cancel</Button>
-          <Button color="dark" leftSection={<IconCheck size={16} />} onClick={handleEditSave}>Save Changes</Button>
+          <Button color="dark" leftSection={<IconCheck size={16} />} onClick={handleEditSave} loading={isUploading}>Save Changes</Button>
         </Group>
       </Modal>
 

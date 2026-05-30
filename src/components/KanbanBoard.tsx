@@ -466,14 +466,14 @@ export default function KanbanBoard({projectId, onToggleSidebar}: KanbanBoardPro
 		return currentUserRole === 'owner' || currentUserRole === 'editor';
 	}, [currentUserRole]);
 
-	const addTask = async (columnId: string, title: string, content: string) => {
+	const addTask = async (columnId: string, title: string, content: string, attachments: any[] = []) => {
 		const colTasks = tasks.filter((t) => t.column_id === columnId);
 		const lastTask = colTasks.length > 0 ? colTasks[colTasks.length - 1] : null;
 		const newPos = generateKeyBetween(lastTask ? lastTask.position : null, null);
 
 		const tempId = crypto.randomUUID();
 		const nowStr = new Date().toISOString();
-		const newTask: Task = {id: tempId, column_id: columnId, project_id: projectId, title, content, position: newPos, created_at: nowStr};
+		const newTask: Task = {id: tempId, column_id: columnId, project_id: projectId, title, content, position: newPos, created_at: nowStr, attachments};
 		updateTasks((prev) => [...prev, newTask]);
 
 		// Close modal immediately for zero-latency UI
@@ -481,7 +481,7 @@ export default function KanbanBoard({projectId, onToggleSidebar}: KanbanBoardPro
 
 		const {data} = await supabase
 			.from('tasks')
-			.insert({id: tempId, column_id: columnId, project_id: projectId, title, content, position: newPos})
+			.insert({id: tempId, column_id: columnId, project_id: projectId, title, content, position: newPos, attachments})
 			.select()
 			.single();
 
@@ -600,9 +600,11 @@ export default function KanbanBoard({projectId, onToggleSidebar}: KanbanBoardPro
 		}
 	};
 
-	const updateTask = async (id: string, title: string, content: string) => {
-		updateTasks((prev) => prev.map((t) => (t.id === id ? {...t, title, content} : t)));
-		const {error} = await supabase.from('tasks').update({title, content}).eq('id', id);
+	const updateTask = async (id: string, title: string, content: string, attachments?: any[]) => {
+		updateTasks((prev) => prev.map((t) => (t.id === id ? {...t, title, content, ...(attachments !== undefined && { attachments })} : t)));
+		const updatePayload: any = {title, content};
+		if (attachments !== undefined) updatePayload.attachments = attachments;
+		const {error} = await supabase.from('tasks').update(updatePayload).eq('id', id);
 		if (!error) {
 			showToast({
 				type: 'success',
