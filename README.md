@@ -11,6 +11,9 @@ A highly interactive, Figma-inspired Kanban board built with Next.js 15 and Supa
 -   **⚡ Real-time Updates**: Instant synchronization with Supabase backend.
 -   **🎨 Dynamic Columns**: Customizable column titles and color-coded headers.
 -   **📱 Responsive Controls**: Keyboard shortcuts (Space + Drag to pan) and zoom controls.
+-   **📎 Task Attachments**: Easily upload and manage file attachments for each task.
+-   **🔍 Task Preview**: Quick preview dialogs to view task details without losing context.
+-   **📦 Archive Alerts**: Confirmation alerts when dropping tasks into the archive to prevent accidental deletions.
 
 ## 🚀 Tech Stack
 
