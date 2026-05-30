@@ -33,6 +33,7 @@ interface SidebarProps {
   onUpdateProject: (id: string, title: string) => Promise<void>;
   onLogout: () => void;
   currentUserId: string | null;
+  isAnonymousUser?: boolean;
   onClose?: () => void;
 }
 
@@ -48,6 +49,7 @@ export default function Sidebar({
   onUpdateProject,
   onLogout,
   currentUserId,
+  isAnonymousUser = false,
   onClose,
 }: SidebarProps) {
   const { showToast } = useToast();
@@ -418,36 +420,48 @@ export default function Sidebar({
       </div>
 
       <div className="p-3 border-t border-zinc-200/50 dark:border-zinc-800/50">
-        <Menu shadow="md" width={200} position="top-start" offset={10}>
-          <Menu.Target>
-            <UnstyledButton className="flex items-center gap-3 w-full p-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
-              <Avatar 
-                src={profile?.avatar_url || "https://oqhjxepxjzkfunemjvqp.supabase.co/storage/v1/object/public/avatars/user-default.png"} 
-                radius="xl" 
-                size="sm" 
-              />
-              <div className="flex-1 min-w-0 text-left">
-                <Text size="sm" fw={600} truncate c="var(--mantine-color-text)">
-                  {profile?.username || "—"}
-                </Text>
-                <Text size="xs" fw={600} c="dimmed" tt="uppercase">
-                  My account
-                </Text>
-              </div>
-              <IconChevronRight size={16} className="text-zinc-400" />
-            </UnstyledButton>
-          </Menu.Target>
+        {isAnonymousUser ? (
+          <Button 
+            fullWidth 
+            variant="light" 
+            color="blue" 
+            onClick={onLogout}
+            className="hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors"
+          >
+            Create Account or Login
+          </Button>
+        ) : (
+          <Menu shadow="md" width={200} position="top-start" offset={10}>
+            <Menu.Target>
+              <UnstyledButton className="flex items-center gap-3 w-full p-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
+                <Avatar 
+                  src={profile?.avatar_url || "https://oqhjxepxjzkfunemjvqp.supabase.co/storage/v1/object/public/avatars/user-default.png"} 
+                  radius="xl" 
+                  size="sm" 
+                />
+                <div className="flex-1 min-w-0 text-left">
+                  <Text size="sm" fw={600} truncate c="var(--mantine-color-text)">
+                    {profile?.username || "—"}
+                  </Text>
+                  <Text size="xs" fw={600} c="dimmed" tt="uppercase">
+                    My account
+                  </Text>
+                </div>
+                <IconChevronRight size={16} className="text-zinc-400" />
+              </UnstyledButton>
+            </Menu.Target>
 
-          <Menu.Dropdown>
-            <Menu.Item leftSection={<IconSettings size={14} />} component={Link} href="/profile">
-              Profile Settings
-            </Menu.Item>
-            <Menu.Divider />
-            <Menu.Item color="red" leftSection={<IconLogout size={14} />} onClick={onLogout}>
-              Sign Out
-            </Menu.Item>
-          </Menu.Dropdown>
-        </Menu>
+            <Menu.Dropdown>
+              <Menu.Item leftSection={<IconSettings size={14} />} component={Link} href="/profile">
+                Profile Settings
+              </Menu.Item>
+              <Menu.Divider />
+              <Menu.Item color="red" leftSection={<IconLogout size={14} />} onClick={onLogout}>
+                Sign Out
+              </Menu.Item>
+            </Menu.Dropdown>
+          </Menu>
+        )}
       </div>
 
       <ProjectModal

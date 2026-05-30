@@ -29,6 +29,7 @@ CREATE TABLE IF NOT EXISTS project_members (
   user_id UUID REFERENCES profiles(id) ON DELETE CASCADE NOT NULL,
   role TEXT NOT NULL DEFAULT 'viewer', -- 'owner', 'editor', 'viewer'
   created_at TIMESTAMPTZ DEFAULT NOW(),
+  joined_via_link_id UUID REFERENCES project_share_links(id) ON DELETE SET NULL,
   UNIQUE(project_id, user_id)
 );
 
@@ -43,6 +44,15 @@ CREATE TABLE IF NOT EXISTS columns (
   created_at TIMESTAMPTZ DEFAULT NOW(),
   archived_at TIMESTAMPTZ DEFAULT NULL,
   is_archive_pool BOOLEAN DEFAULT FALSE
+);
+
+-- Project Share Links
+CREATE TABLE IF NOT EXISTS project_share_links (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  project_id UUID REFERENCES projects ON DELETE CASCADE NOT NULL,
+  role TEXT NOT NULL CHECK (role IN ('viewer', 'editor')),
+  created_by UUID REFERENCES auth.users ON DELETE CASCADE NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- Tasks
@@ -62,6 +72,7 @@ CREATE TABLE IF NOT EXISTS tasks (
 -- 2. Indices for performance
 CREATE INDEX IF NOT EXISTS idx_projects_archived_at ON projects(archived_at);
 CREATE INDEX IF NOT EXISTS idx_columns_archived_at ON columns(archived_at);
+CREATE INDEX IF NOT EXISTS idx_project_share_links_project_id ON project_share_links(project_id);
 CREATE INDEX IF NOT EXISTS idx_tasks_archived_at ON tasks(archived_at);
 CREATE INDEX IF NOT EXISTS idx_projects_user_id ON projects(user_id);
 CREATE INDEX IF NOT EXISTS idx_project_members_user_id ON project_members(user_id);
@@ -116,6 +127,7 @@ ALTER TABLE projects ENABLE ROW LEVEL SECURITY;
 ALTER TABLE project_members ENABLE ROW LEVEL SECURITY;
 ALTER TABLE columns ENABLE ROW LEVEL SECURITY;
 ALTER TABLE tasks ENABLE ROW LEVEL SECURITY;
+ALTER TABLE project_share_links ENABLE ROW LEVEL SECURITY;
 
 -- Set replica identity to FULL for comprehensive real-time payloads
 ALTER TABLE columns REPLICA IDENTITY FULL;
@@ -198,7 +210,61 @@ CREATE POLICY "Owners and editors can update tasks" ON tasks
 CREATE POLICY "Owners and editors can delete tasks" ON tasks
   FOR DELETE USING (is_project_admin(project_id, auth.uid()));
 
+-- Project Share Links Policies
+DROP POLICY IF EXISTS "Admins can manage share links" ON project_share_links;
+CREATE POLICY "Admins can manage share links" ON project_share_links
+  FOR ALL
+  USING (is_project_admin(project_id, auth.uid()))
+  WITH CHECK (is_project_admin(project_id, auth.uid()));
+
+DROP POLICY IF EXISTS "Authenticated users can view share links" ON project_share_links;
+CREATE POLICY "Authenticated users can view share links" ON project_share_links
+  FOR SELECT
+  USING (auth.role() = 'authenticated');
+
 -- 5. Triggers & Functions
+
+-- Function to securely redeem share links (bypasses RLS)
+CREATE OR REPLACE FUNCTION redeem_share_link(share_token UUID)
+RETURNS JSON AS $$
+DECLARE
+  v_project_id UUID;
+  v_role TEXT;
+  v_user_id UUID;
+BEGIN
+  -- Get current user ID
+  v_user_id := auth.uid();
+  IF v_user_id IS NULL THEN
+    RAISE EXCEPTION 'Not authenticated';
+  END IF;
+
+  -- Look up the token
+  SELECT project_id, role INTO v_project_id, v_role
+  FROM public.project_share_links
+  WHERE id = share_token;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Invalid or revoked share link';
+  END IF;
+
+  -- Ensure the user has a profile (sometimes anonymous auth misses the trigger)
+  IF NOT EXISTS (SELECT 1 FROM public.profiles WHERE id = v_user_id) THEN
+    INSERT INTO public.profiles (id, username)
+    VALUES (v_user_id, 'anon_' || substr(v_user_id::text, 1, 8))
+    ON CONFLICT (id) DO NOTHING;
+  END IF;
+
+  -- Insert or update project_members
+  -- Using DO NOTHING to avoid accidentally downgrading an existing member (e.g. owner to viewer)
+  INSERT INTO public.project_members (project_id, user_id, role, joined_via_link_id)
+  VALUES (v_project_id, v_user_id, v_role, share_token)
+  ON CONFLICT (project_id, user_id) 
+  DO NOTHING;
+  
+  RETURN json_build_object('success', true, 'project_id', v_project_id, 'role', v_role);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
 -- Function to handle new user registration
 CREATE OR REPLACE FUNCTION handle_new_user() 
 RETURNS TRIGGER AS $$

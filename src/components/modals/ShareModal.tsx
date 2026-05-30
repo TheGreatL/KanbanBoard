@@ -2,8 +2,8 @@
 
 import {useState, useEffect} from 'react';
 import {supabase} from '@/lib/supabase';
-import {IconShare, IconSearch, IconUserPlus, IconUserMinus, IconChevronDown, IconCheck} from '@tabler/icons-react';
-import {Modal, TextInput, Group, Stack, Text, Menu, Avatar, ActionIcon, Loader, Badge, ScrollArea, Box, Button, UnstyledButton} from '@mantine/core';
+import {IconShare, IconSearch, IconUserPlus, IconUserMinus, IconChevronDown, IconCheck, IconLink, IconCopy, IconTrash} from '@tabler/icons-react';
+import {Modal, TextInput, Group, Stack, Text, Menu, Avatar, ActionIcon, Loader, Badge, ScrollArea, Box, Button, UnstyledButton, Divider, CopyButton, Tooltip} from '@mantine/core';
 
 interface ShareModalProps {
 	isOpen: boolean;
@@ -53,6 +53,10 @@ export default function ShareModal({isOpen, onClose, projectId, currentUserId}: 
 	const [invitingRole, setInvitingRole] = useState('viewer');
 	const [updatingMemberId, setUpdatingMemberId] = useState<string | null>(null);
 
+	const [shareLinks, setShareLinks] = useState<any[]>([]);
+	const [generatingLink, setGeneratingLink] = useState(false);
+	const [shareLinkRole, setShareLinkRole] = useState('viewer');
+
 	const currentUserRole = projectMembers.find((m) => m.user_id === currentUserId)?.role;
 	const isOwner = currentUserRole === 'owner';
 
@@ -63,9 +67,17 @@ export default function ShareModal({isOpen, onClose, projectId, currentUserId}: 
 		if (data) setProjectMembers(data);
 	};
 
+	const fetchShareLinks = async () => {
+		const {data} = await supabase.from('project_share_links').select('*').eq('project_id', projectId);
+		if (data) setShareLinks(data);
+	};
+
 	useEffect(() => {
-		if (isOpen) fetchProjectMembers();
-	}, [isOpen, projectId]);
+		if (isOpen) {
+			fetchProjectMembers();
+			if (isOwner) fetchShareLinks();
+		}
+	}, [isOpen, projectId, isOwner]);
 
 	const searchUsers = async (query: string) => {
 		if (!query.trim()) {
@@ -108,6 +120,27 @@ export default function ShareModal({isOpen, onClose, projectId, currentUserId}: 
 		setUpdatingMemberId(null);
 	};
 
+	const generateShareLink = async () => {
+		setGeneratingLink(true);
+		const {error} = await supabase.from('project_share_links').insert({
+			project_id: projectId,
+			role: shareLinkRole,
+			created_by: currentUserId
+		});
+		
+		if (!error) {
+			await fetchShareLinks();
+		}
+		setGeneratingLink(false);
+	};
+
+	const revokeShareLink = async (linkId: string) => {
+		const {error} = await supabase.from('project_share_links').delete().eq('id', linkId);
+		if (!error) {
+			await fetchShareLinks();
+		}
+	};
+
 	if (!isOpen && typeof window !== 'undefined') return null;
 
 	return (
@@ -136,7 +169,7 @@ export default function ShareModal({isOpen, onClose, projectId, currentUserId}: 
 					/>
 
 					{isOwner && (
-						<Group gap="xs" px={4}>
+						<Group gap="xs" px={4} align="center">
 							<Text size="xs" fw={600} c="dimmed" tt="uppercase">Role:</Text>
 							<RoleDropdown value={invitingRole} onChange={setInvitingRole} />
 						</Group>
@@ -175,7 +208,14 @@ export default function ShareModal({isOpen, onClose, projectId, currentUserId}: 
 										<Avatar src={member.profile?.avatar_url} size="sm" radius="xl">{!member.profile?.avatar_url && member.profile?.username?.charAt(0).toUpperCase()}</Avatar>
 										<Box style={{ flex: 1, minWidth: 0 }}>
 											<Text size="sm" fw={600} truncate>{member.profile?.username}</Text>
-											<Text fz={10} fw={500} c="dimmed">{member.user_id === currentUserId ? 'You' : 'Member'}</Text>
+											<Group gap={4}>
+												<Text fz={10} fw={500} c="dimmed">{member.user_id === currentUserId ? 'You' : 'Member'}</Text>
+												{member.joined_via_link_id && (
+													<Tooltip label="Joined via Share Link" withArrow position="top">
+														<IconLink size={10} className="text-blue-500" />
+													</Tooltip>
+												)}
+											</Group>
 										</Box>
 									</Group>
 
@@ -202,6 +242,63 @@ export default function ShareModal({isOpen, onClose, projectId, currentUserId}: 
 						</Stack>
 					</ScrollArea>
 				</Stack>
+
+				{isOwner && (
+					<>
+						<Divider my="sm" />
+						<Stack gap="xs">
+							<Group justify="space-between" px={4}>
+								<Text size="xs" fw={600} c="dimmed" tt="uppercase">Shareable Links</Text>
+								<Group gap="xs">
+									<RoleDropdown value={shareLinkRole} onChange={setShareLinkRole} />
+									<Button 
+										size="compact-xs" 
+										variant="light" 
+										leftSection={<IconLink size={14} />} 
+										onClick={generateShareLink} 
+										loading={generatingLink}
+									>
+										Generate
+									</Button>
+								</Group>
+							</Group>
+							
+							{shareLinks.length > 0 ? (
+								<Stack gap="xs">
+									{shareLinks.map((link) => {
+										const url = `${window.location.origin}/share/${link.id}`;
+										return (
+											<Group key={link.id} justify="space-between" p="xs" className="bg-zinc-50 dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800">
+												<Group gap="xs">
+													<Badge size="sm" variant="dot" color={link.role === 'editor' ? 'blue' : 'gray'}>{link.role}</Badge>
+													<Text size="xs" c="dimmed" truncate w={150}>{url}</Text>
+												</Group>
+												<Group gap="xs">
+													<CopyButton value={url} timeout={2000}>
+														{({ copied, copy }) => (
+															<Tooltip label={copied ? 'Copied' : 'Copy link'} withArrow position="top">
+																<ActionIcon color={copied ? 'teal' : 'gray'} variant="subtle" onClick={copy} size="sm">
+																	{copied ? <IconCheck size={14} /> : <IconCopy size={14} />}
+																</ActionIcon>
+															</Tooltip>
+														)}
+													</CopyButton>
+													<Tooltip label="Revoke link" withArrow position="top">
+														<ActionIcon color="red" variant="subtle" onClick={() => revokeShareLink(link.id)} size="sm">
+															<IconTrash size={14} />
+														</ActionIcon>
+													</Tooltip>
+												</Group>
+											</Group>
+										);
+									})}
+								</Stack>
+							) : (
+								<Text size="xs" c="dimmed" fs="italic" ta="center" p="sm">No active share links.</Text>
+							)}
+						</Stack>
+					</>
+				)}
 			</Stack>
 		</Modal>
 	);

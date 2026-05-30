@@ -30,8 +30,9 @@ export async function updateSession(request: NextRequest) {
 	const isAuthRoute = request.nextUrl.pathname.startsWith('/auth');
 	const isAboutRoute = request.nextUrl.pathname.startsWith('/about');
 	const isHealthRoute = request.nextUrl.pathname.startsWith('/api/health');
+	const isShareRoute = request.nextUrl.pathname.startsWith('/share');
 
-	if (!user && !isAuthRoute && !isAboutRoute && !isHealthRoute) {
+	if (!user && !isAuthRoute && !isAboutRoute && !isHealthRoute && !isShareRoute) {
 		const url = request.nextUrl.clone();
 		url.pathname = '/about';
 		return NextResponse.redirect(url);

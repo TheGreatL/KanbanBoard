@@ -3,7 +3,7 @@
 import {useEffect, useState, useCallback} from 'react';
 import {useRouter} from 'next/navigation';
 import {supabase} from '@/lib/supabase';
-import { IconLoader2, IconLayoutDashboard, IconFolder, IconMenu2 } from '@tabler/icons-react';
+import { IconLoader2, IconLayoutDashboard, IconFolder, IconMenu2, IconAlertCircle } from '@tabler/icons-react';
 import Sidebar, {Project} from '@/components/Sidebar';
 import {cn} from '@/lib/utils';
 import dynamic from 'next/dynamic';
@@ -17,6 +17,7 @@ export default function Home() {
 	const [projects, setProjects] = useState<Project[]>([]);
 	const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
 	const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+	const [isAnonymousUser, setIsAnonymousUser] = useState(false);
 	const router = useRouter();
 
 	const fetchProjects = useCallback(async () => {
@@ -54,6 +55,7 @@ export default function Home() {
 				router.push('/about');
 			} else {
 				setCurrentUserId(session.user.id);
+				setIsAnonymousUser(session.user.is_anonymous || false);
 				fetchProjects();
 				setLoading(false);
 			}
@@ -66,6 +68,7 @@ export default function Home() {
 				router.push('/about');
 			} else {
 				setCurrentUserId(session.user.id);
+				setIsAnonymousUser(session.user.is_anonymous || false);
 				fetchProjects();
 			}
 		});
@@ -242,11 +245,25 @@ export default function Home() {
 					onUpdateProject={updateProject}
 					onLogout={handleLogout}
 					currentUserId={currentUserId}
+					isAnonymousUser={isAnonymousUser}
 					onClose={() => setIsMobileSidebarOpen(false)}
 				/>
 			</div>
 
 			<main className='flex-1 overflow-hidden flex flex-col bg-white dark:bg-zinc-950 min-w-0 min-h-0 relative'>
+				{isAnonymousUser && (
+					<div className="bg-blue-50 dark:bg-blue-900/20 border-b border-blue-100 dark:border-blue-900/30 px-4 py-2.5 flex items-center justify-center gap-2 text-sm text-blue-600 dark:text-blue-400 z-50 shadow-sm relative">
+						<IconAlertCircle className="w-4 h-4 shrink-0" />
+						<span className="truncate">You are browsing as a guest.</span>
+						<button 
+							onClick={handleLogout} 
+							className="font-semibold underline hover:opacity-80 shrink-0 ml-1"
+						>
+							Create an account
+						</button>
+					</div>
+				)}
+
 				{/* Empty State Mobile Menu Button */}
 				{!activeProjectId && (
 					<div className='lg:hidden absolute top-4 left-4 z-50'>
