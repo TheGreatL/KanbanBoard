@@ -4,6 +4,7 @@ import { Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { IconAlertCircle } from '@tabler/icons-react';
+import { Title, Text, Button, Alert, Box, Center, Flex, ThemeIcon, Stack } from '@mantine/core';
 
 function ErrorContent() {
   const searchParams = useSearchParams();
@@ -11,53 +12,61 @@ function ErrorContent() {
   const errorDescription = searchParams.get('error_description');
 
   return (
-    <div className='grow w-full max-w-md space-y-6 p-8'>
-      <div className='text-center space-y-2'>
-        <div className='inline-flex items-center justify-center w-16 h-16 rounded-full bg-red-100 dark:bg-red-900/20 text-red-600 dark:text-red-400 mb-4'>
-          <IconAlertCircle className='w-8 h-8' />
-        </div>
-        <h2 className='text-3xl font-bold text-zinc-900 dark:text-zinc-50'>Authentication Error</h2>
-        <p className='text-sm text-zinc-500 dark:text-zinc-400'>
+    <Box w="100%" maw={400}>
+      <Stack align="center" ta="center" gap="xs" mb="xl">
+        <ThemeIcon size={64} radius="xl" variant="light" color="red" mb="md">
+          <IconAlertCircle size={32} />
+        </ThemeIcon>
+        <Title order={2} fw={700} lts={-0.5}>Authentication Error</Title>
+        <Text size="sm" c="dimmed">
           Something went wrong during the authentication process.
-        </p>
-      </div>
+        </Text>
+      </Stack>
 
-      <div className='p-4 rounded-xl bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-900/20 space-y-2'>
-        <p className='text-sm font-semibold text-red-800 dark:text-red-400'>
+      <Alert variant="light" color="red" radius="sm" mb="xl">
+        <Text size="sm" fw={600} mb={4}>
           {error?.replace(/_/g, ' ').toUpperCase() || 'UNKNOWN ERROR'}
-        </p>
-        <p className='text-xs text-red-700 dark:text-red-500'>
+        </Text>
+        <Text size="xs">
           {errorDescription || 'An unexpected error occurred. Please try again or contact support.'}
-        </p>
-      </div>
+        </Text>
+      </Alert>
 
-      <div className='space-y-3'>
-        <Link
-          href='/auth'
-          className='flex items-center justify-center w-full py-2.5 px-4 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-50 dark:hover:bg-zinc-200 text-white dark:text-zinc-900 font-medium rounded-xl transition-colors'
+      <Stack gap="sm">
+        <Button
+          component={Link}
+          href="/auth"
+          fullWidth 
+          color="dark" 
+          size="md" 
+          radius="sm"
         >
           Back to Login
-        </Link>
-        <Link
-          href='/auth/forgot-password'
-          className='flex items-center justify-center w-full py-2.5 px-4 bg-transparent hover:bg-zinc-100 dark:hover:bg-zinc-900 text-zinc-600 dark:text-zinc-400 font-medium rounded-xl transition-colors border border-zinc-200 dark:border-zinc-800'
+        </Button>
+        <Button
+          component={Link}
+          href="/auth/forgot-password"
+          fullWidth 
+          variant="default"
+          size="md" 
+          radius="sm"
         >
           Request new reset link
-        </Link>
-      </div>
-    </div>
+        </Button>
+      </Stack>
+    </Box>
   );
 }
 
 export default function AuthCodeErrorPage() {
   return (
-    <div className='min-h-screen grid grid-cols-1 lg:grid-cols-2 bg-white dark:bg-zinc-950'>
-      <div className='flex items-center relative justify-center'>
-        <Suspense fallback={<div className="animate-pulse bg-zinc-100 dark:bg-zinc-900 w-full max-w-md h-64 rounded-2xl" />}>
+    <Flex mih="100vh" bg="var(--mantine-color-body)">
+      <Center flex={1} p="xl" pos="relative">
+        <Suspense fallback={<Box w="100%" maw={400} h={256} className="animate-pulse bg-zinc-100 dark:bg-zinc-900 rounded-md" />}>
           <ErrorContent />
         </Suspense>
-      </div>
-      <div className='bg-amber-200/50 lg:block hidden'></div>
-    </div>
+      </Center>
+      <Box style={{ flex: 1 }} bg="var(--mantine-color-gray-1)" display={{ base: 'none', lg: 'block' }}></Box>
+    </Flex>
   );
 }

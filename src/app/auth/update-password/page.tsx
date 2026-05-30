@@ -3,8 +3,9 @@
 import {useState} from 'react';
 import {supabase} from '@/lib/supabase';
 import {useRouter} from 'next/navigation';
-import { IconLoader2 } from '@tabler/icons-react';
 import {useToast} from '@/components/ui/Toast';
+import { Title, Text, PasswordInput, Button, Alert, Stack, Box, Center, Flex } from '@mantine/core';
+import { IconAlertCircle } from '@tabler/icons-react';
 
 export default function UpdatePasswordPage() {
 	const {showToast} = useToast();
@@ -52,75 +53,62 @@ export default function UpdatePasswordPage() {
 	};
 
 	return (
-		<div className='min-h-screen grid grid-cols-1 lg:grid-cols-2 bg-white dark:bg-zinc-950'>
-			<div className='flex items-center relative justify-center'>
-				<div className='grow w-full max-w-md space-y-4 p-8'>
-					<div className='mb-8'>
-						<h2 className='text-3xl font-bold text-zinc-900 dark:text-zinc-50'>Update Password</h2>
-						<p className='text-sm text-zinc-500 dark:text-zinc-400 mt-2'>Enter and confirm your new password below.</p>
-					</div>
+		<Flex mih="100vh" bg="var(--mantine-color-body)">
+			<Center flex={1} p="xl" pos="relative">
+				<Box w="100%" maw={400}>
+					<Box mb="xl">
+						<Title order={2} fw={700} lts={-0.5} mb="xs">Update Password</Title>
+						<Text size="sm" c="dimmed">
+							Enter and confirm your new password below.
+						</Text>
+					</Box>
 
-					<form
-						onSubmit={handleUpdate}
-						className='space-y-4'>
-						{formError && (
-							<div className='p-3 rounded-xl bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-900/20 animate-in fade-in slide-in-from-top-1 duration-200'>
-								<p className='text-xs font-semibold text-red-600 dark:text-red-400 flex items-center gap-2'>
-									<span className='w-1.5 h-1.5 rounded-full bg-red-600 dark:bg-red-400 shrink-0' />
+					<form onSubmit={handleUpdate}>
+						<Stack gap="md">
+							{formError && (
+								<Alert variant="light" color="red" title="Error" icon={<IconAlertCircle size={16} />} radius="sm">
 									{formError}
-								</p>
-							</div>
-						)}
+								</Alert>
+							)}
 
-						<div>
-							<label
-								htmlFor='password'
-								className='block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1'>
-								New Password
-							</label>
-							<input
-								id='password'
-								type='password'
+							<PasswordInput
+								label="New Password"
+								placeholder="••••••••"
 								required
 								value={password}
 								onChange={(e) => setPassword(e.target.value)}
-								className='w-full px-3 py-2 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100 transition-shadow text-zinc-900 dark:text-zinc-100'
-								placeholder='••••••••'
+								radius="sm"
+								size="md"
 								minLength={6}
 							/>
-						</div>
 
-						<div>
-							<label
-								htmlFor='confirmPassword'
-								className='block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1'>
-								Confirm New Password
-							</label>
-							<input
-								id='confirmPassword'
-								type='password'
+							<PasswordInput
+								label="Confirm New Password"
+								placeholder="••••••••"
 								required
 								value={confirmPassword}
 								onChange={(e) => setConfirmPassword(e.target.value)}
-								className='w-full px-3 py-2 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100 transition-shadow text-zinc-900 dark:text-zinc-100'
-								placeholder='••••••••'
+								radius="sm"
+								size="md"
 								minLength={6}
 							/>
-						</div>
 
-						<button
-							type='submit'
-							disabled={loading}
-							className='w-full py-2.5 px-4 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-50 dark:hover:bg-zinc-200 text-white dark:text-zinc-900 font-medium rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center'>
-							{loading ?
-								<IconLoader2 className='w-5 h-5 animate-spin' />
-							:	'Update Password'}
-						</button>
+							<Button 
+								type="submit" 
+								loading={loading} 
+								fullWidth 
+								color="dark" 
+								size="md" 
+								radius="sm"
+								mt="xs"
+							>
+								Update Password
+							</Button>
+						</Stack>
 					</form>
-				</div>
-			</div>
-			{/* gradient black and white mix background */}
-			<div className='bg-amber-200/50 lg:block hidden'></div>
-		</div>
+				</Box>
+			</Center>
+			<Box style={{ flex: 1 }} bg="var(--mantine-color-gray-1)" display={{ base: 'none', lg: 'block' }}></Box>
+		</Flex>
 	);
 }

@@ -2,7 +2,8 @@
 
 import { Suspense, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { IconKey, IconArrowRight, IconLoader2 } from '@tabler/icons-react';
+import { IconKey, IconArrowRight } from '@tabler/icons-react';
+import { Title, Text, Button, Alert, Box, Center, Flex, ThemeIcon, Stack } from '@mantine/core';
 
 function VerifyResetContent() {
   const searchParams = useSearchParams();
@@ -20,68 +21,66 @@ function VerifyResetContent() {
 
   if (!code) {
     return (
-      <div className='grow w-full max-w-md space-y-6 p-8'>
-        <div className='text-center space-y-2'>
-          <h2 className='text-3xl font-bold text-zinc-900 dark:text-zinc-50'>Invalid Link</h2>
-          <p className='text-sm text-zinc-500 dark:text-zinc-400'>
-            This password reset link appears to be invalid or incomplete.
-          </p>
-        </div>
-        <button
+      <Box w="100%" maw={400} ta="center">
+        <Title order={2} fw={700} lts={-0.5} mb="xs">Invalid Link</Title>
+        <Text size="sm" c="dimmed" mb="xl">
+          This password reset link appears to be invalid or incomplete.
+        </Text>
+        <Button
           onClick={() => router.push('/auth/forgot-password')}
-          className='w-full py-2.5 px-4 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-50 dark:hover:bg-zinc-200 text-white dark:text-zinc-900 font-medium rounded-xl transition-colors'
+          fullWidth 
+          color="dark" 
+          size="md" 
+          radius="sm"
         >
           Request new link
-        </button>
-      </div>
+        </Button>
+      </Box>
     );
   }
 
   return (
-    <div className='grow w-full max-w-md space-y-6 p-8'>
-      <div className='text-center space-y-2'>
-        <div className='inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-100 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 mb-4'>
-          <IconKey className='w-8 h-8' />
-        </div>
-        <h2 className='text-3xl font-bold text-zinc-900 dark:text-zinc-50'>Reset Password</h2>
-        <p className='text-sm text-zinc-500 dark:text-zinc-400'>
+    <Box w="100%" maw={400}>
+      <Stack align="center" ta="center" gap="xs" mb="xl">
+        <ThemeIcon size={64} radius="xl" variant="light" color="blue" mb="md">
+          <IconKey size={32} />
+        </ThemeIcon>
+        <Title order={2} fw={700} lts={-0.5}>Reset Password</Title>
+        <Text size="sm" c="dimmed">
           Click the button below to verify your request and reset your password.
-        </p>
-      </div>
+        </Text>
+      </Stack>
 
-      <div className='p-4 rounded-xl bg-blue-50 dark:bg-blue-900/5 border border-blue-100 dark:border-blue-900/10'>
-        <p className='text-xs text-blue-700 dark:text-blue-400 text-center'>
-          To protect your account, we require this extra step to ensure the reset link wasn&apos;t automatically consumed by an email scanner.
-        </p>
-      </div>
+      <Alert variant="light" color="blue" radius="sm" mb="xl">
+        <Text size="xs" ta="center">
+          To protect your account, we require this extra step to ensure the reset link wasn't automatically consumed by an email scanner.
+        </Text>
+      </Alert>
 
-      <button
+      <Button
         onClick={handleConfirm}
-        disabled={loading}
-        className='w-full py-3 px-4 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-50 dark:hover:bg-zinc-200 text-white dark:text-zinc-900 font-medium rounded-xl transition-all flex items-center justify-center gap-2 group disabled:opacity-70'
+        loading={loading}
+        fullWidth 
+        color="dark" 
+        size="md" 
+        radius="sm"
+        rightSection={<IconArrowRight size={16} />}
       >
-        {loading ? (
-          <IconLoader2 className='w-5 h-5 animate-spin' />
-        ) : (
-          <>
-            Confirm Reset
-            <IconArrowRight className='w-4 h-4 group-hover:translate-x-0.5 transition-transform' />
-          </>
-        )}
-      </button>
-    </div>
+        Confirm Reset
+      </Button>
+    </Box>
   );
 }
 
 export default function VerifyResetPage() {
   return (
-    <div className='min-h-screen grid grid-cols-1 lg:grid-cols-2 bg-white dark:bg-zinc-950'>
-      <div className='flex items-center relative justify-center'>
-        <Suspense fallback={<div className="animate-pulse bg-zinc-100 dark:bg-zinc-900 w-full max-w-md h-64 rounded-2xl" />}>
+    <Flex mih="100vh" bg="var(--mantine-color-body)">
+      <Center flex={1} p="xl" pos="relative">
+        <Suspense fallback={<Box w="100%" maw={400} h={256} className="animate-pulse bg-zinc-100 dark:bg-zinc-900 rounded-md" />}>
           <VerifyResetContent />
         </Suspense>
-      </div>
-      <div className='bg-amber-200/50 lg:block hidden'></div>
-    </div>
+      </Center>
+      <Box style={{ flex: 1 }} bg="var(--mantine-color-gray-1)" display={{ base: 'none', lg: 'block' }}></Box>
+    </Flex>
   );
 }

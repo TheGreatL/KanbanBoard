@@ -2,9 +2,10 @@
 
 import {useState} from 'react';
 import {supabase} from '@/lib/supabase';
-import { IconLoader2, IconArrowLeft } from '@tabler/icons-react';
+import { IconArrowLeft, IconAlertCircle, IconMail } from '@tabler/icons-react';
 import {useToast} from '@/components/ui/Toast';
 import Link from 'next/link';
+import { Title, Text, TextInput, Button, Alert, Stack, Box, Center, Flex, Anchor } from '@mantine/core';
 
 export default function ForgotPasswordPage() {
 	const {showToast} = useToast();
@@ -37,68 +38,62 @@ export default function ForgotPasswordPage() {
 	};
 
 	return (
-		<div className='min-h-screen grid grid-cols-1 lg:grid-cols-2 bg-white dark:bg-zinc-950'>
-			<div className='flex items-center relative justify-center'>
-				<div className='grow w-full max-w-md space-y-4 p-8'>
-					<div className='mb-8'>
-						<Link href='/auth' className='inline-flex items-center text-sm font-medium text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 mb-6 transition-colors'>
-							<IconArrowLeft className='w-4 h-4 mr-2' />
-							Back to login
-						</Link>
-						<h2 className='text-3xl font-bold text-zinc-900 dark:text-zinc-50'>Reset Password</h2>
-						<p className='text-sm text-zinc-500 dark:text-zinc-400 mt-2'>
-							Enter your email address and we&apos;ll send you a link to reset your password.
-						</p>
-					</div>
+		<Flex mih="100vh" bg="var(--mantine-color-body)">
+			<Center flex={1} p="xl" pos="relative">
+				<Box w="100%" maw={400}>
+					<Anchor component={Link} href="/auth" c="dimmed" size="sm" mb="xl" display="inline-flex" style={{ alignItems: 'center', gap: 4 }}>
+						<IconArrowLeft size={16} />
+						Back to login
+					</Anchor>
+					
+					<Box mb="xl">
+						<Title order={2} fw={700} lts={-0.5} mb="xs">Reset Password</Title>
+						<Text size="sm" c="dimmed">
+							Enter your email address and we'll send you a link to reset your password.
+						</Text>
+					</Box>
 
 					{isSubmitted ? (
-						<div className='p-4 rounded-xl bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-900/20 text-center space-y-4'>
-							<h3 className='font-semibold text-green-800 dark:text-green-400'>Check your email</h3>
-							<p className='text-sm text-green-700 dark:text-green-500'>
-								We&apos;ve sent a password reset link to <strong>{email}</strong>.
-							</p>
-							<p className='text-xs text-green-600 dark:text-green-600 mt-2'>
-								You can close this window and continue from the link in your email.
-							</p>
-						</div>
+						<Alert variant="light" color="green" title="Check your email" icon={<IconMail size={16} />} radius="sm">
+							We've sent a password reset link to <strong>{email}</strong>. You can close this window and continue from the link in your email.
+						</Alert>
 					) : (
-						<form onSubmit={handleReset} className='space-y-4'>
-							{formError && (
-								<div className='p-3 rounded-xl bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-900/20 animate-in fade-in slide-in-from-top-1 duration-200'>
-									<p className='text-xs font-semibold text-red-600 dark:text-red-400 flex items-center gap-2'>
-										<span className='w-1.5 h-1.5 rounded-full bg-red-600 dark:bg-red-400 shrink-0' />
+						<form onSubmit={handleReset}>
+							<Stack gap="md">
+								{formError && (
+									<Alert variant="light" color="red" title="Error" icon={<IconAlertCircle size={16} />} radius="sm">
 										{formError}
-									</p>
-								</div>
-							)}
+									</Alert>
+								)}
 
-							<div>
-								<label htmlFor='email' className='block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1'>
-									Email
-								</label>
-								<input
-									id='email'
-									type='email'
+								<TextInput
+									label="Email"
+									placeholder="you@example.com"
+									type="email"
 									required
 									value={email}
 									onChange={(e) => setEmail(e.target.value)}
-									className='w-full px-3 py-2 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100 transition-shadow text-zinc-900 dark:text-zinc-100'
-									placeholder='you@example.com'
+									radius="sm"
+									size="md"
 								/>
-							</div>
 
-							<button
-								type='submit'
-								disabled={loading}
-								className='w-full py-2.5 px-4 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-50 dark:hover:bg-zinc-200 text-white dark:text-zinc-900 font-medium rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center'>
-								{loading ? <IconLoader2 className='w-5 h-5 animate-spin' /> : 'Send Reset Link'}
-							</button>
+								<Button 
+									type="submit" 
+									loading={loading} 
+									fullWidth 
+									color="dark" 
+									size="md" 
+									radius="sm"
+									mt="xs"
+								>
+									Send Reset Link
+								</Button>
+							</Stack>
 						</form>
 					)}
-				</div>
-			</div>
-			{/* gradient black and white mix background */}
-			<div className='bg-amber-200/50 lg:block hidden'></div>
-		</div>
+				</Box>
+			</Center>
+			<Box style={{ flex: 1 }} bg="var(--mantine-color-gray-1)" display={{ base: 'none', lg: 'block' }}></Box>
+		</Flex>
 	);
 }

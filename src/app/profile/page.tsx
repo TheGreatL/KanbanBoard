@@ -3,9 +3,9 @@
 import {useEffect, useState} from 'react';
 import {useRouter} from 'next/navigation';
 import {supabase} from '@/lib/supabase';
-import { IconLoader2, IconArrowLeft, IconCamera, IconDeviceFloppy, IconCheck, IconLogout } from '@tabler/icons-react';
+import { IconArrowLeft, IconCamera, IconDeviceFloppy, IconCheck, IconLogout, IconAlertCircle } from '@tabler/icons-react';
 import {useToast} from '@/components/ui/Toast';
-import {ProfileSkeleton, Skeleton} from '@/components/ui/Skeleton';
+import { Box, Flex, Text, Button, Avatar, ActionIcon, FileButton, Paper, TextInput, Alert, Center, Group, Skeleton, Container } from '@mantine/core';
 
 const DEFAULT_AVATAR = 'https://oqhjxepxjzkfunemjvqp.supabase.co/storage/v1/object/public/avatars/user-default.png';
 
@@ -59,7 +59,6 @@ export default function ProfilePage() {
 		setIsSaving(true);
 		setProfileError(null);
 
-		// Username validation: lowercase alphanumeric, hyphens, underscores
 		const usernameRegex = /^[a-z0-9-_]+$/;
 		if (!usernameRegex.test(username)) {
 			setProfileError('Username can only contain lowercase letters, numbers, hyphens, and underscores.');
@@ -83,7 +82,6 @@ export default function ProfilePage() {
 			const error = err as {message?: string; code?: string; status?: number};
 			let message = error?.message || 'Could not save profile.';
 
-			// Map 409 Conflict / Unique violation / trigger error
 			if (
 				error?.code === '23505' ||
 				error?.status === 409 ||
@@ -99,10 +97,9 @@ export default function ProfilePage() {
 		}
 	};
 
-	const uploadAvatar = async (event: React.ChangeEvent<HTMLInputElement>) => {
-		if (!event.target.files || event.target.files.length === 0) return;
+	const uploadAvatar = async (file: File | null) => {
+		if (!file) return;
 
-		const file = event.target.files[0];
 		const localUrl = URL.createObjectURL(file);
 		setPreviewUrl(localUrl);
 
@@ -139,153 +136,146 @@ export default function ProfilePage() {
 
 	if (loading) {
 		return (
-			<div className='min-h-screen bg-zinc-50 dark:bg-zinc-950 flex flex-col items-center p-4 lg:p-12'>
-				<div className='w-full max-w-lg mb-8'>
-					<Skeleton
-						variant='text'
-						width='30%'
-						height={24}
-						className='mb-2'
-					/>
-					<Skeleton
-						variant='text'
-						width='60%'
-						height={16}
-					/>
-				</div>
-				<ProfileSkeleton />
-			</div>
+			<Flex direction="column" mih="100vh" bg="var(--mantine-color-body)">
+				<Center style={{ flexGrow: 1 }} p="xl">
+					<Box w="100%" maw={500}>
+						<Skeleton height={24} width="30%" mb="xs" />
+						<Skeleton height={16} width="60%" mb="xl" />
+						<Skeleton height={120} mb="md" radius="md" />
+						<Skeleton height={300} radius="md" />
+					</Box>
+				</Center>
+			</Flex>
 		);
 	}
 
 	const displayAvatar = previewUrl || avatarUrl || DEFAULT_AVATAR;
 
 	return (
-		<div className='min-h-screen bg-zinc-50 dark:bg-zinc-950 flex flex-col'>
-			{/* Top bar — matches the app header */}
-			<div className='glass border-b border-zinc-200/50 dark:border-zinc-800/50 px-4 lg:px-8 py-3 flex items-center gap-3'>
-				<button
-					onClick={() => router.push('/')}
-					className='flex items-center gap-2 text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 transition-colors group text-sm font-medium'>
-					<IconArrowLeft className='w-4 h-4 transition-transform group-hover:-translate-x-1' />
-					Back to Board
-				</button>
-				<span className='text-zinc-300 dark:text-zinc-700'>/</span>
-				<span className='text-sm font-semibold text-zinc-900 dark:text-zinc-100'>Profile Settings</span>
-			</div>
+		<Flex direction="column" mih="100vh" bg="var(--mantine-color-body)">
+			<Box 
+				component="nav" 
+				px={{ base: 'md', lg: 'xl' }} 
+				py="sm" 
+				bg="var(--mantine-color-body)" 
+				style={{ borderBottom: '1px solid var(--mantine-color-default-border)' }}
+			>
+				<Group>
+					<Button
+						variant="subtle"
+						color="gray"
+						onClick={() => router.push('/')}
+						leftSection={<IconArrowLeft size={16} />}
+						size="sm"
+					>
+						Back to Board
+					</Button>
+					<Text c="dimmed">/</Text>
+					<Text size="sm" fw={600}>Profile Settings</Text>
+				</Group>
+			</Box>
 
-			{/* Content */}
-			<div className='flex-1 flex items-start justify-center p-4 lg:p-8'>
-				<div className='w-full max-w-lg space-y-4'>
-					{/* Avatar card */}
-					<div className='bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 flex items-center gap-5'>
-						<div className='relative shrink-0'>
-							<div className='w-16 h-16 rounded-full overflow-hidden border-2 border-zinc-200 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800'>
-								<img
-									src={displayAvatar}
-									alt='Avatar'
-									className='w-full h-full object-cover'
-								/>
-							</div>
-							<label className='absolute -bottom-1 -right-1 w-7 h-7 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-full flex items-center justify-center shadow-sm cursor-pointer hover:scale-110 transition-transform active:scale-95'>
-								{uploading ?
-									<IconLoader2 className='w-3.5 h-3.5 animate-spin text-zinc-500' />
-								:	<IconCamera className='w-3.5 h-3.5 text-zinc-500 dark:text-zinc-400' />}
-								<input
-									type='file'
-									className='hidden'
-									accept='image/*'
-									onChange={uploadAvatar}
-									disabled={uploading}
-								/>
-							</label>
-						</div>
-						<div className='flex-1 min-w-0'>
-							<p className='font-bold text-zinc-900 dark:text-zinc-100 text-base truncate'>{username || '—'}</p>
-							<p className='text-xs text-zinc-400 truncate mt-0.5'>{user?.email}</p>
-							<p className='text-[10px] text-zinc-400 mt-2 font-medium'>Click the camera to change your avatar</p>
-						</div>
-					</div>
+			<Container size="sm" py="xl" style={{ flexGrow: 1, width: '100%' }}>
+				<Paper withBorder radius="md" p="md" mb="md" display="flex" style={{ alignItems: 'center', gap: '20px' }}>
+					<Box pos="relative">
+						<Avatar src={displayAvatar} size={64} radius="xl" color="blue" />
+						<FileButton onChange={uploadAvatar} accept="image/png,image/jpeg,image/gif,image/webp">
+							{(props) => (
+								<ActionIcon 
+									{...props} 
+									radius="xl" 
+									variant="default" 
+									size="sm"
+									pos="absolute" 
+									bottom={-4} 
+									right={-4} 
+									loading={uploading}
+									style={{ boxShadow: 'var(--mantine-shadow-sm)' }}
+								>
+									<IconCamera size={14} />
+								</ActionIcon>
+							)}
+						</FileButton>
+					</Box>
+					<Box style={{ flex: 1, minWidth: 0 }}>
+						<Text fw={700} truncate>{username || '—'}</Text>
+						<Text size="xs" c="dimmed" truncate>{user?.email}</Text>
+						<Text size={'xs'} c="dimmed" mt={4} fw={500}>Click the camera to change your avatar</Text>
+					</Box>
+				</Paper>
 
-					{/* Form card */}
-					<form
-						onSubmit={handleSave}
-						className='bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl overflow-hidden'>
-						<div className='px-5 py-3 border-b border-zinc-100 dark:border-zinc-800'>
-							<h2 className='text-xs font-bold text-zinc-500 uppercase '>Account Details</h2>
-						</div>
+				<Paper withBorder radius="md" component="form" onSubmit={handleSave} mb="md">
+					<Box px="md" py="xs" style={{ borderBottom: '1px solid var(--mantine-color-default-border)' }}>
+						<Text size="xs" fw={700} c="dimmed" tt="uppercase">Account Details</Text>
+					</Box>
 
-						{profileError && (
-							<div className='px-5 py-4 bg-red-50 dark:bg-red-900/10 border-b border-red-100 dark:border-red-900/20 animate-in fade-in slide-in-from-top-1 duration-200'>
-								<p className='text-xs font-semibold text-red-600 dark:text-red-400 flex items-center gap-2'>
-									<span className='w-1.5 h-1.5 rounded-full bg-red-600 dark:bg-red-400 shrink-0' />
-									{profileError}
-								</p>
-							</div>
-						)}
+					{profileError && (
+						<Alert variant="light" color="red" title="Error" icon={<IconAlertCircle size={16} />} radius={0} style={{ borderBottom: '1px solid var(--mantine-color-red-light)' }}>
+							{profileError}
+						</Alert>
+					)}
 
-						<div className='divide-y divide-zinc-100 dark:divide-zinc-800'>
-							{/* Username row */}
-							<div className='flex items-center gap-4 px-5 py-4'>
-								<span className='text-sm font-medium text-zinc-500 dark:text-zinc-400 w-20 shrink-0'>Username</span>
-								<input
-									type='text'
-									value={username}
-									onChange={(e) => {
-										setUsername(e.target.value);
-										setProfileError(null);
-									}}
-									className='w-full px-3 py-2 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100 transition-shadow text-zinc-900 dark:text-zinc-100'
-									placeholder='johndoe'
-								/>
-							</div>
-
-							{/* Email row */}
-							<div className='flex items-center gap-4 px-5 py-4'>
-								<span className='text-sm font-medium text-zinc-500 dark:text-zinc-400 w-20 shrink-0'>Email</span>
-								<span className='flex-1 text-sm text-zinc-400 dark:text-zinc-500 truncate select-all'>{user?.email}</span>
-							</div>
-						</div>
-
-						<div className='px-5 py-4 border-t border-zinc-100 dark:border-zinc-800 flex items-center justify-end gap-2'>
-							<button
-								type='submit'
-								disabled={isSaving || !username.trim()}
-								className='flex items-center gap-2 px-5 py-2.5 text-sm font-bold bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 rounded-xl hover:shadow-lg transition-all active:scale-95 disabled:opacity-50'>
-								{saved ?
-									<IconCheck className='w-4 h-4' />
-								: isSaving ?
-									<IconLoader2 className='w-4 h-4 animate-spin' />
-								:	<IconDeviceFloppy className='w-4 h-4' />}
-								{saved ? 'Saved!' : 'Save Changes'}
-							</button>
-						</div>
-					</form>
-
-					{/* Danger zone */}
-					<div className='bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl overflow-hidden'>
-						<div className='px-5 py-3 border-b border-zinc-100 dark:border-zinc-800'>
-							<h2 className='text-xs font-bold text-zinc-500 uppercase '>Session</h2>
-						</div>
-						<div className='px-5 py-4 flex items-center justify-between'>
-							<div>
-								<p className='text-sm font-semibold text-zinc-900 dark:text-zinc-100'>Sign out</p>
-								<p className='text-xs text-zinc-400 mt-0.5'>You&apos;ll be redirected to the login page.</p>
-							</div>
-							<button
-								type='button'
-								onClick={() => {
-									supabase.auth.signOut();
-									router.push('/auth');
+					<Box px="md" py="md">
+						<Group mb="md" align="flex-start" wrap="nowrap">
+							<Text size="sm" fw={500} c="dimmed" w={80} style={{ flexShrink: 0 }} mt={8}>Username</Text>
+							<TextInput
+								value={username}
+								onChange={(e) => {
+									setUsername(e.currentTarget.value);
+									setProfileError(null);
 								}}
-								className='flex items-center gap-2 px-4 py-2 text-sm font-bold text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 border border-rose-200 dark:border-rose-900/50 rounded-xl transition-colors'>
-								<IconLogout className='w-4 h-4' />
-								Sign Out
-							</button>
-						</div>
-					</div>
-				</div>
-			</div>
-		</div>
+								placeholder="johndoe"
+								style={{ flexGrow: 1 }}
+								radius="sm"
+							/>
+						</Group>
+
+						<Group wrap="nowrap">
+							<Text size="sm" fw={500} c="dimmed" w={80} style={{ flexShrink: 0 }}>Email</Text>
+							<Text size="sm" c="dimmed" truncate style={{ flexGrow: 1 }}>{user?.email}</Text>
+						</Group>
+					</Box>
+
+					<Box px="md" py="sm" style={{ borderTop: '1px solid var(--mantine-color-default-border)' }}>
+						<Group justify="flex-end">
+							<Button
+								type="submit"
+								color="dark"
+								radius="sm"
+								disabled={isSaving || !username.trim()}
+								loading={isSaving}
+								leftSection={saved ? <IconCheck size={16} /> : <IconDeviceFloppy size={16} />}
+							>
+								{saved ? 'Saved!' : 'Save Changes'}
+							</Button>
+						</Group>
+					</Box>
+				</Paper>
+
+				<Paper withBorder radius="md">
+					<Box px="md" py="xs" style={{ borderBottom: '1px solid var(--mantine-color-default-border)' }}>
+						<Text size="xs" fw={700} c="dimmed" tt="uppercase">Session</Text>
+					</Box>
+					<Group justify="space-between" px="md" py="md">
+						<Box>
+							<Text size="sm" fw={600}>Sign out</Text>
+							<Text size="xs" c="dimmed">You'll be redirected to the login page.</Text>
+						</Box>
+						<Button
+							variant="outline"
+							color="red"
+							radius="sm"
+							onClick={() => {
+								supabase.auth.signOut();
+								router.push('/auth');
+							}}
+							leftSection={<IconLogout size={16} />}
+						>
+							Sign Out
+						</Button>
+					</Group>
+				</Paper>
+			</Container>
+		</Flex>
 	);
 }

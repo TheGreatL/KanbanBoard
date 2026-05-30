@@ -1,207 +1,190 @@
+'use client';
 import React from 'react';
 import Link from 'next/link';
-import { IconChartBar, IconBolt, IconRotateClockwise, IconUsers, IconTarget, IconLock, IconDeviceMobile, IconSettings, IconArrowRight } from '@tabler/icons-react';
+import { 
+  Container, Title, Text, Button, Group, Stack, Card, SimpleGrid, 
+  ThemeIcon, Badge, Box, Divider, Grid, Flex
+} from '@mantine/core';
+import { 
+  IconChartBar, IconRotateClockwise, IconUsers, IconLock, 
+  IconDeviceMobile, IconSettings, IconArrowRight, IconLayoutKanban
+} from '@tabler/icons-react';
 
 export default function AboutPage() {
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 selection:bg-blue-500/30">
-      {/* Background Decorative Elements */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none -z-10">
-        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-500/10 blur-[120px] rounded-full" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-indigo-500/10 blur-[120px] rounded-full" />
-      </div>
-
-      {/* Navigation Bar */}
-      <nav className="sticky top-0 z-50 bg-white/70 dark:bg-zinc-900/70 backdrop-blur-xl border-b border-zinc-200/50 dark:border-zinc-800/50 transition-colors duration-300">
-        <div className="max-w-7xl mx-auto px-6 sm:px-10 lg:px-16 flex justify-between items-center py-4">
-          <Link
-            href="/"
-            className="group flex items-center gap-2 font-bold text-2xl text-zinc-900 dark:text-white"
-          >
-            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white shadow-lg shadow-blue-500/20 group-hover:scale-110 transition-transform">
-              📊
-            </div>
-            <span>Kanban</span>
-          </Link>
-          <div className="flex items-center gap-6">
-            <Link
-              href="/auth"
-              className="px-5 py-2.5 rounded-full font-semibold bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 hover:scale-105 active:scale-95 transition-all shadow-lg shadow-zinc-900/10 dark:shadow-white/10"
-            >
-              Get Started
+    <Box bg="var(--mantine-color-body)" mih="100vh">
+      {/* Professional Nav */}
+      <Box 
+        component="nav" 
+        pos="sticky" 
+        top={0} 
+        style={{ zIndex: 200, backdropFilter: 'blur(8px)',borderTop: 0, borderLeft: 0, borderRight: 0, }}
+        bg="rgba(var(--mantine-color-body-rgb), 0.85)"
+        bd="1px solid var(--mantine-color-default-border)"
+       
+      >
+        <Container size="lg" py="md">
+          <Group justify="space-between">
+            <Link href="/" style={{ textDecoration: 'none', color: 'inherit' }}>
+              <Group gap="sm">
+                <ThemeIcon size={32} radius="sm" variant="filled" color="dark">
+                  <IconLayoutKanban size={20} />
+                </ThemeIcon>
+                <Title order={3} fw={700} lts={-0.5}>KanbanBoard</Title>
+              </Group>
             </Link>
-          </div>
-        </div>
-      </nav>
+            
+            <Group>
+              <Button component={Link} href="/auth" variant="subtle" color="gray" size="sm">
+                Log in
+              </Button>
+              <Button component={Link} href="/auth" radius="sm" color="dark" size="sm">
+                Start for free
+              </Button>
+            </Group>
+          </Group>
+        </Container>
+      </Box>
 
-      <main className="max-w-7xl mx-auto px-6 sm:px-10 lg:px-16 py-16 sm:py-24 lg:py-32">
+      <Container size="lg" pt={120} pb={120}>
         {/* Hero Section */}
-        <div className="relative text-center mb-24 lg:mb-32">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-600 dark:text-blue-400 text-sm font-medium mb-6 animate-fade-in">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
-            </span>
-            A Personal Side Project
-          </div>
-          <h1 className="font-bold text-6xl sm:text-7xl lg:text-8xl mb-8 bg-clip-text text-transparent bg-gradient-to-b from-zinc-900 via-zinc-900 to-zinc-500 dark:from-white dark:via-white dark:to-zinc-500">
-            Organize work, <br />
-            <span className="text-blue-600">effortlessly.</span>
-          </h1>
-          <p className="text-xl sm:text-2xl text-zinc-600 dark:text-zinc-400 max-w-3xl mx-auto leading-relaxed">
-            I built this simple, collaborative Kanban board to manage my personal projects and share tasks with friends. Fast, clean, and visual.
-          </p>
-          <div className="mt-12 flex justify-center gap-4">
-             <Link href="/auth" className="group flex items-center gap-2 px-8 py-4 bg-blue-600 text-white rounded-2xl font-bold text-lg hover:bg-blue-700 transition-all shadow-xl shadow-blue-500/25">
-               Try it out
-               <IconArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-             </Link>
-          </div>
-        </div>
+        <Flex direction={{ base: 'column', md: 'row' }} gap={80} align="center" mb={120}>
+          <Box style={{ flex: '1 1 58%' }}>
+            <Stack gap="lg" align="flex-start">
+              <Badge variant="outline" color="gray" radius="sm" size="lg" fw={600}>
+                Personal Side Project
+              </Badge>
+              <Title order={1} fw={700} style={{ fontSize: 'clamp(2.5rem, 5vw, 3.5rem)', lineHeight: 1.1, letterSpacing: '-0.02em' }}>
+                Organize work with absolute clarity.
+              </Title>
+              <Text size="xl" c="dimmed" style={{ lineHeight: 1.6 }} maw={500}>
+                A clean, collaborative Kanban board built for focus. Manage personal projects, align with your team, and track every detail seamlessly.
+              </Text>
+              <Group mt="sm">
+                <Button component={Link} href="/auth" size="md" radius="sm" color="dark" rightSection={<IconArrowRight size={16} />}>
+                  Start organizing
+                </Button>
+              </Group>
+            </Stack>
+          </Box>
+          <Box style={{ flex: '1 1 41%' }}>
+            <Card withBorder radius="md" p="xl" shadow="sm" bg="var(--mantine-color-default)">
+               {/* Minimalist illustration of a board */}
+               <Stack gap="md">
+                 <Group grow align="flex-start">
+                   <Box bd="1px solid var(--mantine-color-default-border)" p="sm" style={{ borderRadius: 6, backgroundColor: 'var(--mantine-color-body)' }}>
+                     <Box h={6} w="40%" bg="var(--mantine-color-dimmed)" mb="xs" style={{ borderRadius: 4 }} opacity={0.5} />
+                     <Box h={40} bg="var(--mantine-color-default-hover)" mb="xs" style={{ borderRadius: 4 }} />
+                     <Box h={30} bg="var(--mantine-color-default-hover)" style={{ borderRadius: 4 }} />
+                   </Box>
+                   <Box bd="1px solid var(--mantine-color-default-border)" p="sm" style={{ borderRadius: 6, backgroundColor: 'var(--mantine-color-body)' }}>
+                     <Box h={6} w="60%" bg="var(--mantine-color-dimmed)" mb="xs" style={{ borderRadius: 4 }} opacity={0.5} />
+                     <Box h={50} bg="var(--mantine-color-default-hover)" style={{ borderRadius: 4 }} />
+                   </Box>
+                 </Group>
+               </Stack>
+            </Card>
+          </Box>
+        </Flex>
+
+        <Divider mb={120} opacity={0.5} />
 
         {/* Philosophy Section */}
-        <section className="mb-32 relative">
-          <div className="absolute inset-0 bg-blue-600/5 dark:bg-blue-600/10 blur-3xl -z-10 rounded-full scale-90" />
-          <div className="grid lg:grid-cols-2 gap-16 items-center">
-            <div>
-              <h2 className="text-4xl sm:text-5xl font-bold mb-8">
-                The inspiration <br />
-                <span className="text-blue-600 italic">behind the board.</span>
-              </h2>
-              <div className="space-y-6 text-lg text-zinc-600 dark:text-zinc-400 leading-relaxed">
-                <p>
-                  I was looking for a straightforward way to manage my hobbies, side projects, and day-to-day tasks. Most enterprise tools felt too heavy, and basic to-do lists lacked visual context.
-                </p>
-                <p>
-                  So, I decided to build my own Kanban board. It's designed specifically for what a small group of friends or an individual needs to stay organized.
-                </p>
-                <p>
-                  Whether we're planning a weekend trip, iterating on a hobby project, or just tracking chores, this tool keeps everyone on the same page.
-                </p>
-              </div>
-            </div>
-            <div className="grid gap-4">
-              <div className="bg-white/50 dark:bg-zinc-900/50 backdrop-blur-md border border-zinc-200 dark:border-zinc-800 p-8 rounded-3xl shadow-sm">
-                <blockquote className="text-2xl font-medium leading-tight">
-                  "Sometimes the best tool is the one you build yourself to solve your own exact problem."
-                </blockquote>
-              </div>
-              <div className="flex gap-4">
-                <div className="flex-1 bg-blue-600 p-8 rounded-3xl text-white">
-                  <div className="text-3xl font-bold mb-1">100%</div>
-                  <div className="text-sm opacity-80 uppercase font-semibold">Free Forever</div>
-                </div>
-                <div className="flex-1 bg-zinc-200 dark:bg-zinc-800 p-8 rounded-3xl">
-                  <div className="text-3xl font-bold mb-1">∞</div>
-                  <div className="text-sm text-zinc-500 uppercase font-semibold">Tinkering Potential</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
+        <Flex direction={{ base: 'column', md: 'row' }} gap={60} mb={120}>
+          <Box style={{ flex: '1 1 33%' }}>
+            <Title order={2} fw={700} style={{ fontSize: '2rem', letterSpacing: '-0.02em' }}>
+              The Philosophy
+            </Title>
+          </Box>
+          <Box style={{ flex: '1 1 66%' }}>
+            <Stack gap="xl" c="dimmed" fz="lg" style={{ lineHeight: 1.7 }}>
+              <Text>
+                Most enterprise project management tools are bogged down with features you rarely use. On the other end of the spectrum, basic to-do lists fail to provide the visual context needed for continuous workflows.
+              </Text>
+              <Text>
+                This board was engineered specifically to hit the sweet spot: providing powerful, real-time collaboration without the enterprise bloat. It is designed for small teams, independent creators, and precise personal project management.
+              </Text>
+              <Flex direction={{ base: 'column', sm: 'row' }} gap="xl" mt="md">
+                <Box style={{ flex: 1 }}>
+                  <Text fw={600} c="var(--mantine-color-text)" mb="xs">100% Free</Text>
+                  <Text size="sm">No subscriptions, no hidden tiers. Use the full feature set forever.</Text>
+                </Box>
+                <Box style={{ flex: 1 }}>
+                  <Text fw={600} c="var(--mantine-color-text)" mb="xs">Built for Speed</Text>
+                  <Text size="sm">Optimized data structures ensure instant updates across all clients globally.</Text>
+                </Box>
+              </Flex>
+            </Stack>
+          </Box>
+        </Flex>
 
-        {/* Bento Grid Benefits */}
-        <section className="mb-32">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold mb-4">What is it used for?</h2>
-            <p className="text-zinc-600 dark:text-zinc-400">From grocery lists to building apps, it handles it all.</p>
-          </div>
+        <Divider mb={120} opacity={0.5} />
+
+        {/* Features / Use Cases */}
+        <Box mb={120}>
+          <Title order={2} fw={700} size="2rem" mb="xl" style={{ letterSpacing: '-0.02em' }}>
+            Engineered for versatile workflows
+          </Title>
           
-          <div className="grid grid-cols-1 md:grid-cols-3 md:grid-rows-2 gap-4 h-full md:h-[600px]">
-             {/* Large Feature */}
-             <div className="md:col-span-2 md:row-span-2 group relative overflow-hidden bg-white dark:bg-zinc-900 rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800 p-10 hover:shadow-2xl transition-all duration-500">
-                <div className="absolute top-0 right-0 p-8">
-                   <IconTarget className="w-16 h-16 text-blue-600/20 group-hover:scale-110 transition-transform duration-500" />
-                </div>
-                <div className="relative h-full flex flex-col justify-end">
-                   <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center text-white mb-6">
-                      <IconChartBar className="w-6 h-6" />
-                   </div>
-                   <h3 className="text-3xl font-bold mb-4">Personal Projects</h3>
-                   <p className="text-xl text-zinc-600 dark:text-zinc-400 max-w-md leading-relaxed">
-                     Keep track of your side hustles, learning goals, or home improvement projects. See exactly what needs to be done next, at a glance.
-                   </p>
-                </div>
-             </div>
-
-             {/* Small Feature 1 */}
-             <div className="group relative overflow-hidden bg-white dark:bg-zinc-900 rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800 p-8 hover:shadow-2xl transition-all duration-500">
-                <div className="w-10 h-10 bg-indigo-500/10 dark:bg-indigo-500/20 rounded-lg flex items-center justify-center text-indigo-600 dark:text-indigo-400 mb-6">
-                   <IconRotateClockwise className="w-5 h-5" />
-                </div>
-                <h3 className="text-xl font-bold mb-2">Event Planning</h3>
-                <p className="text-zinc-600 dark:text-zinc-400">
-                  Planning a trip or a party? Easily share the board with friends and assign tasks.
-                </p>
-             </div>
-
-             {/* Small Feature 2 */}
-             <div className="group relative overflow-hidden bg-white dark:bg-zinc-900 rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800 p-8 hover:shadow-2xl transition-all duration-500">
-                <div className="w-10 h-10 bg-emerald-500/10 dark:bg-emerald-500/20 rounded-lg flex items-center justify-center text-emerald-600 dark:text-emerald-400 mb-6">
-                   <IconUsers className="w-5 h-5" />
-                </div>
-                <h3 className="text-xl font-bold mb-2">Daily Life</h3>
-                <p className="text-zinc-600 dark:text-zinc-400">
-                  Use it as an interactive, drag-and-drop to-do list for your daily routines and chores.
-                </p>
-             </div>
-          </div>
-        </section>
-
-        {/* Feature List Section */}
-        <section className="mb-32">
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+          <SimpleGrid cols={{ base: 1, md: 3 }} spacing="xl">
             {[
-              { icon: IconChartBar, title: "Custom Columns", desc: "Create lists that match your exact workflow or needs." },
-              { icon: IconLock, title: "Role Management", desc: "Assign viewers or editors to keep projects organized." },
-              { icon: IconDeviceMobile, title: "Live Collaboration", desc: "Invite friends and work together in real-time." },
-              { icon: IconSettings, title: "Visual Drag-n-Drop", desc: "Move tasks around effortlessly with a smooth interface." }
+              { icon: IconChartBar, title: "Personal Projects", desc: "Track side hustles and learning goals with absolute precision. Know exactly what needs attention." },
+              { icon: IconRotateClockwise, title: "Event Planning", desc: "Coordinate trips or events effortlessly. Share the board and delegate responsibilities in real-time." },
+              { icon: IconUsers, title: "Daily Operations", desc: "Manage recurring chores and daily routines using a visual, drag-and-drop methodology." },
+              { icon: IconSettings, title: "Custom Columns", desc: "Map out your unique workflow stages. Not everything fits into simple 'To Do' and 'Done' columns." },
+              { icon: IconLock, title: "Role-Based Access", desc: "Maintain control over your data by assigning specific viewer or editor roles to collaborators." },
+              { icon: IconDeviceMobile, title: "Real-Time Sync", desc: "Powered by Supabase, all data changes propagate instantly to connected clients worldwide." }
             ].map((f, i) => (
-              <div key={i} className="group p-2">
-                <div className="mb-6 w-14 h-14 rounded-2xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white transition-all duration-300">
-                  <f.icon className="w-6 h-6" />
-                </div>
-                <h4 className="text-lg font-bold mb-2">{f.title}</h4>
-                <p className="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed">
-                  {f.desc}
-                </p>
-              </div>
+              <Card key={i} withBorder radius="md" p="xl" bg="transparent" className="hover:bg-zinc-50 dark:hover:bg-zinc-900/50 transition-colors">
+                <ThemeIcon size={40} radius="md" variant="light" color="dark" mb="lg">
+                  <f.icon size={20} stroke={1.5} />
+                </ThemeIcon>
+                <Title order={4} fw={600} size="1.1rem" mb="sm">{f.title}</Title>
+                <Text size="sm" c="dimmed" style={{ lineHeight: 1.6 }}>{f.desc}</Text>
+              </Card>
             ))}
-          </div>
-        </section>
+          </SimpleGrid>
+        </Box>
 
         {/* CTA Section */}
-        <section className="relative overflow-hidden bg-zinc-900 dark:bg-white rounded-[3rem] p-12 sm:p-20 text-center text-white dark:text-zinc-900 border-4 border-blue-600/20">
-          <div className="absolute inset-0 bg-gradient-to-br from-blue-600/20 to-transparent pointer-events-none" />
-          <h2 className="text-4xl sm:text-5xl lg:text-6xl mb-8 relative z-10">
-            Want to give it a spin?
-          </h2>
-          <p className="text-lg sm:text-xl opacity-80 mb-12 max-w-xl mx-auto relative z-10">
-            It's just a free, personal tool. Feel free to create an account and start dragging some cards around with your friends!
-          </p>
-          <div className="flex flex-col sm:flex-row gap-6 justify-center items-center relative z-10">
-            <Link
-              href="/auth"
-              className="w-full sm:w-auto px-10 py-5 bg-blue-600 text-white rounded-2xl text-xl hover:scale-105 active:scale-95 transition-all shadow-2xl shadow-blue-500/50"
-            >
-              Sign Up / Log In
-            </Link>
-            <Link
-              href="/"
-              className="w-full sm:w-auto px-10 py-5 bg-white/10 dark:bg-zinc-900/10 backdrop-blur-md rounded-2xl font-bold text-xl hover:bg-white/20 dark:hover:bg-zinc-900/20 transition-all border border-white/20 dark:border-zinc-900/20"
-            >
-              Return to Home
-            </Link>
-          </div>
-        </section>
-      </main>
+        <Card withBorder radius="md" p={{ base: 'xl', md: 60 }} bg="var(--mantine-color-text)" c="var(--mantine-color-body)">
+          <Flex direction={{ base: 'column', md: 'row' }} justify="space-between" align={{ base: 'flex-start', md: 'center' }} gap="xl">
+            <Box>
+              <Title order={2} fw={700} size="2.5rem" mb="sm" c="var(--mantine-color-body)" style={{ letterSpacing: '-0.02em' }}>
+                Ready to optimize your workflow?
+              </Title>
+              <Text size="lg" opacity={0.8} maw={500}>
+                Create an account in seconds and start managing your projects with clarity.
+              </Text>
+            </Box>
+            <Group>
+              <Button component={Link} href="/auth" size="lg" radius="sm" color="blue" variant="filled">
+                Start for free
+              </Button>
+            </Group>
+          </Flex>
+        </Card>
+      </Container>
 
-      {/* Footer Branding */}
-      <footer className="max-w-7xl mx-auto px-6 lg:px-16 py-12 border-t border-zinc-200 dark:border-zinc-800 text-center">
-        <p className="text-zinc-500 text-sm font-medium uppercase ">
-          Build by Ken Andrew Carlon • © 2026
-        </p>
-      </footer>
-    </div>
+      {/* Footer */}
+      <Box 
+        component="footer" 
+        py="xl" 
+        bd="1px solid var(--mantine-color-default-border)"
+        style={{ borderBottom: 0, borderLeft: 0, borderRight: 0 }}
+      >
+        <Container size="lg">
+          <Group justify="space-between">
+            <Group gap="xs" c="dimmed">
+              <IconLayoutKanban size={20} stroke={1.5} />
+              <Text fw={600} size="sm">KanbanBoard</Text>
+            </Group>
+            <Text size="sm" c="dimmed">
+              © 2026 Ken Andrew Carlon. All rights reserved.
+            </Text>
+          </Group>
+        </Container>
+      </Box>
+    </Box>
   );
 }
