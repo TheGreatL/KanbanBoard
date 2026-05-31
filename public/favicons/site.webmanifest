@@ -1,14 +1,5 @@
 {
-    "id": "/",
-    "name": "KanbanBoard",
-    "short_name": "Kanban",
-    "description": "A beautiful, minimalist multi-user Kanban board",
-    "start_url": "/",
-    "scope": "/",
-    "display": "standalone",
-    "orientation": "any",
-    "theme_color": "#ffffff",
-    "background_color": "#ffffff",
+    "name": "Favicon.now",
     "icons": [
         {
             "src": "android-chrome-36x36.png",
