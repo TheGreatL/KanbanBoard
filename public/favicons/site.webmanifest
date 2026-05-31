@@ -1,5 +1,7 @@
 {
-    "name": "Favicon.now",
+    "name": "KanbanBoard",
+    "short_name": "Kanban",
+    "start_url": "/",
     "icons": [
         {
             "src": "android-chrome-36x36.png",
