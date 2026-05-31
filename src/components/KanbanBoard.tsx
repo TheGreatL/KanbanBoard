@@ -45,7 +45,7 @@ function ZoomControls() {
 	});
 
 	return (
-		<div className='absolute top-auto bottom-6 right-6 flex items-center gap-1 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-1.5 shadow-sm z-50 no-pan animate-in slide-in-from-bottom-4 duration-500'>
+		<div className='absolute top-auto bottom-10 md:bottom-6 right-4 md:right-6 flex items-center gap-1 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-1.5 shadow-sm z-50 no-pan animate-in slide-in-from-bottom-4 duration-500'>
 			<Tooltip label='Zoom Out' position="top" withArrow>
 				<ActionIcon
 					variant="subtle" color="gray" size="lg"

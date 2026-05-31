@@ -200,47 +200,45 @@ export default function ShareModal({isOpen, onClose, projectId, currentUserId}: 
 
 				<Stack gap="xs">
 					<Text size="xs" fw={600} c="dimmed" tt="uppercase" px={4}>Current Members</Text>
-					<ScrollArea h={300} type="always" offsetScrollbars>
-						<Stack gap="xs">
-							{projectMembers.map((member) => (
-								<Group key={member.id} justify="space-between" p="xs" className="hover:bg-zinc-50 dark:hover:bg-zinc-900 rounded-xl transition-colors">
-									<Group gap="sm" wrap="nowrap" style={{ flex: 1, minWidth: 0 }}>
-										<Avatar src={member.profile?.avatar_url} size="sm" radius="xl">{!member.profile?.avatar_url && member.profile?.username?.charAt(0).toUpperCase()}</Avatar>
-										<Box style={{ flex: 1, minWidth: 0 }}>
-											<Text size="sm" fw={600} truncate>{member.profile?.username}</Text>
-											<Group gap={4}>
-												<Text fz={10} fw={500} c="dimmed">{member.user_id === currentUserId ? 'You' : 'Member'}</Text>
-												{member.joined_via_link_id && (
-													<Tooltip label="Joined via Share Link" withArrow position="top">
-														<IconLink size={10} className="text-blue-500" />
-													</Tooltip>
-												)}
-											</Group>
-										</Box>
-									</Group>
-
-									<Group gap="xs" wrap="nowrap">
-										{member.user_id !== currentUserId && member.role !== 'owner' && isOwner ? (
-											<RoleDropdown
-												value={member.role}
-												onChange={(newRole) => updateProjectMemberRole(member.id, newRole)}
-												disabled={updatingMemberId === member.id}
-											/>
-										) : (
-											<Badge variant="light" color="gray" size="sm" radius="sm">{member.role}</Badge>
-										)}
-
-										{member.user_id !== currentUserId && member.role !== 'owner' && isOwner && (
-											<ActionIcon variant="subtle" color="red" size="sm" onClick={() => removeProjectMember(member.id)}>
-												<IconUserMinus size={16} />
-											</ActionIcon>
-										)}
-									</Group>
+					<Stack gap="xs">
+						{projectMembers.map((member) => (
+							<Group key={member.id} justify="space-between" p="xs" className="hover:bg-zinc-50 dark:hover:bg-zinc-900 rounded-xl transition-colors">
+								<Group gap="sm" wrap="nowrap" style={{ flex: 1, minWidth: 0 }}>
+									<Avatar src={member.profile?.avatar_url} size="sm" radius="xl">{!member.profile?.avatar_url && member.profile?.username?.charAt(0).toUpperCase()}</Avatar>
+									<Box style={{ flex: 1, minWidth: 0 }}>
+										<Text size="sm" fw={600} truncate>{member.profile?.username}</Text>
+										<Group gap={4}>
+											<Text fz={10} fw={500} c="dimmed">{member.user_id === currentUserId ? 'You' : 'Member'}</Text>
+											{member.joined_via_link_id && (
+												<Tooltip label="Joined via Share Link" withArrow position="top">
+													<IconLink size={10} className="text-blue-500" />
+												</Tooltip>
+											)}
+										</Group>
+									</Box>
 								</Group>
-							))}
-							{projectMembers.length === 0 && <Text size="xs" c="dimmed" fs="italic" ta="center" p="sm">No other members yet.</Text>}
-						</Stack>
-					</ScrollArea>
+
+								<Group gap="xs" wrap="nowrap">
+									{member.user_id !== currentUserId && member.role !== 'owner' && isOwner ? (
+										<RoleDropdown
+											value={member.role}
+											onChange={(newRole) => updateProjectMemberRole(member.id, newRole)}
+											disabled={updatingMemberId === member.id}
+										/>
+									) : (
+										<Badge variant="light" color="gray" size="sm" radius="sm">{member.role}</Badge>
+									)}
+
+									{member.user_id !== currentUserId && member.role !== 'owner' && isOwner && (
+										<ActionIcon variant="subtle" color="red" size="sm" onClick={() => removeProjectMember(member.id)}>
+											<IconUserMinus size={16} />
+										</ActionIcon>
+									)}
+								</Group>
+							</Group>
+						))}
+						{projectMembers.length === 0 && <Text size="xs" c="dimmed" fs="italic" ta="center" p="sm">No other members yet.</Text>}
+					</Stack>
 				</Stack>
 
 				{isOwner && (
