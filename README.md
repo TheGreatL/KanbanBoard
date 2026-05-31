@@ -16,6 +16,7 @@ A highly interactive, Figma-inspired Kanban board built with Next.js 15 and Supa
 -   **📦 Archive Alerts**: Confirmation alerts when dropping tasks into the archive to prevent accidental deletions.
 -   **🔗 Shareable Links**: Generate secure tokens to share project boards with anonymous users.
 -   **📜 Activity Log**: Comprehensive audit trail tracking task, column, and member changes in real-time.
+-   **📲 Progressive Web App (PWA)**: Installable on desktop and mobile devices for a native app experience.
 
 ## 🚀 Tech Stack
 
@@ -60,6 +61,15 @@ A highly interactive, Figma-inspired Kanban board built with Next.js 15 and Supa
     ```
 
 5.  Open [http://localhost:3000](http://localhost:3000) with your browser.
+
+### Running as a PWA (Production)
+
+Service workers and caching are intentionally disabled in development mode. To test the Progressive Web App installation locally:
+```bash
+npm run build
+npm run start
+```
+Once running, you can install the app via the "Install App" icon in your browser's address bar or via the button on the About page.
 
 ## ⌨️ Controls
 
