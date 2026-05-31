@@ -7,8 +7,44 @@ import {
 } from '@mantine/core';
 import { 
   IconChartBar, IconRotateClockwise, IconUsers, IconLock, 
-  IconDeviceMobile, IconSettings, IconArrowRight, IconLayoutKanban
+  IconDeviceMobile, IconSettings, IconArrowRight, IconLayoutKanban,
+  IconDownload
 } from '@tabler/icons-react';
+
+function InstallButton() {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [deferredPrompt, setDeferredPrompt] = React.useState<any>(null);
+
+  React.useEffect(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const handler = (e: any) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', handler);
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
+
+  if (!deferredPrompt) return null;
+
+  return (
+    <Button 
+      variant="light" 
+      color="blue" 
+      size="sm" 
+      leftSection={<IconDownload size={16} />}
+      onClick={async () => {
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        if (outcome === 'accepted') {
+          setDeferredPrompt(null);
+        }
+      }}
+    >
+      Install App
+    </Button>
+  );
+}
 
 export default function AboutPage() {
   return (
@@ -26,15 +62,14 @@ export default function AboutPage() {
         <Container size="lg" py="md">
           <Group justify="space-between">
             <Link href="/" style={{ textDecoration: 'none', color: 'inherit' }}>
-              <Group gap="sm">
-                <ThemeIcon size={32} radius="sm" variant="filled" color="dark">
-                  <IconLayoutKanban size={20} />
-                </ThemeIcon>
-                <Title order={3} fw={700} lts={-0.5}>KanbanBoard</Title>
+              <Group gap="xs">
+                <img src="/logo.png" alt="KanbanBoard Logo" style={{ height: '32px', width: 'auto', objectFit: 'contain' }} />
+               
               </Group>
             </Link>
             
             <Group>
+              <InstallButton />
               <Button component={Link} href="/auth" variant="subtle" color="gray" size="sm">
                 Log in
               </Button>

@@ -341,10 +341,7 @@ export default function Sidebar({
       />
       <div className="p-4 flex items-center justify-between border-b border-zinc-200/50 dark:border-zinc-800/50">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center shadow-sm">
-            <IconFolder size={18} className="text-white" />
-          </div>
-          <h1 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">Kanban</h1>
+          <img src="/logo.png" alt="KanbanBoard Logo" style={{ height: '32px', width: 'auto', objectFit: 'contain' }} />
         </div>
         {onClose && (
          <div className="lg:hidden block">

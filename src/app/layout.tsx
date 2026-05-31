@@ -19,6 +19,16 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Kanban",
   description: "A beautiful, minimalist multi-user Kanban board",
+  manifest: "/favicons/site.webmanifest",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Kanban",
+  },
+  icons: {
+    icon: "/favicons/favicon.ico",
+    apple: "/favicons/apple-touch-icon.png",
+  },
 };
 
 export const viewport: Viewport = {
@@ -26,6 +36,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
+  themeColor: "#ffffff",
 };
 
 import { ToastProvider } from "@/components/ui/Toast";
