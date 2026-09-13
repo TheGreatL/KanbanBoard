@@ -26,6 +26,7 @@ import ShareModal from './modals/ShareModal';
 import ProjectActivityLog from './ProjectActivityLog';
 import AddTaskModal from './modals/AddTaskModal';
 import AddColumnModal from './modals/AddColumnModal';
+import { useImagePaste } from '@/lib/hooks/useImagePaste';
 import {BoardSkeleton} from './ui/Skeleton';
 import { throttle } from '@/lib/utils';
 import Image from 'next/image';
@@ -96,6 +97,7 @@ export default function KanbanBoard({projectId, onToggleSidebar}: KanbanBoardPro
 	const [isAddingColumn, setIsAddingColumn] = useState(false);
 	const [isActivityLogOpen, setIsActivityLogOpen] = useState(false);
 	const [selectedColumnId, setSelectedColumnId] = useState('');
+	const [initialTaskFiles, setInitialTaskFiles] = useState<File[]>([]);
 
 	const [pendingArchiveDrag, setPendingArchiveDrag] = useState<{
 		activeId: string;
@@ -511,11 +513,27 @@ export default function KanbanBoard({projectId, onToggleSidebar}: KanbanBoardPro
 
 	// Modal Open Handlers
 	const openShareModal = () => setIsSharing(true);
-	const openAddTaskModal = (columnId?: string) => {
+	const openAddTaskModal = (columnId?: string, initialFiles?: File[]) => {
 		if (!isEditable) return;
-		if (columnId) setSelectedColumnId(columnId);
+		const colId = columnId || (columns.length > 0 ? columns[0].id : '');
+		if (colId) setSelectedColumnId(colId);
+		setInitialTaskFiles(initialFiles || []);
 		setIsAddingTask(true);
 	};
+
+	// Board-level snippet paste: hitting Ctrl+V on the board opens Create Task with snippet attached
+	useImagePaste({
+		enabled: isEditable && !isAddingTask && !isAddingColumn && !isSharing && !isActivityLogOpen,
+		onImagesPasted: (files) => {
+			const targetCol = selectedColumnId || (columns.length > 0 ? columns[0].id : '');
+			openAddTaskModal(targetCol, files);
+			showToast({
+				type: 'info',
+				title: 'Screenshot Captured',
+				message: 'Opening task creation with your pasted snippet!',
+			});
+		},
+	});
 	const openAddColumnModal = () => {
 		if (!isEditable) return;
 		setIsAddingColumn(true);
@@ -1210,11 +1228,15 @@ export default function KanbanBoard({projectId, onToggleSidebar}: KanbanBoardPro
 			{/* Modal Components */}
 			<AddTaskModal
 				isOpen={isAddingTask}
-				onClose={() => setIsAddingTask(false)}
+				onClose={() => {
+					setIsAddingTask(false);
+					setInitialTaskFiles([]);
+				}}
 				columns={columns}
 				selectedColumnId={selectedColumnId}
 				onSelectedColumnIdChange={setSelectedColumnId}
 				onAddTask={addTask}
+				initialFiles={initialTaskFiles}
 			/>
 			<AddColumnModal
 				isOpen={isAddingColumn}

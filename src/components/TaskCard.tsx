@@ -2,10 +2,12 @@
 import { cn } from "@/lib/utils";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { IconTrash, IconPencil, IconX, IconCheck, IconCalendar, IconGripVertical, IconRotateClockwise, IconPaperclip, IconMagnet } from "@tabler/icons-react";
+import { IconTrash, IconPencil, IconX, IconCheck, IconCalendar, IconGripVertical, IconRotateClockwise, IconPaperclip, IconMagnet, IconPlus, IconLoader2 } from "@tabler/icons-react";
 import { useState, useRef, useEffect } from "react";
-import { Tooltip, Modal, Button, Text, Group, ActionIcon, TextInput, Textarea, FileInput, Badge, Image as MantineImage } from '@mantine/core';
-import { supabase } from "@/lib/supabase";
+import { Tooltip, Modal, Button, Text, Group, ActionIcon, TextInput, Textarea, Badge, Image as MantineImage } from '@mantine/core';
+import AttachmentUploadZone from "./ui/AttachmentUploadZone";
+import { uploadTaskFiles, TaskAttachment } from "@/lib/attachments";
+import { useToast } from "./ui/Toast";
 
 export interface Task {
   id: string;
@@ -65,12 +67,16 @@ export default function TaskCard({ task, columnColor = "zinc", deleteTask, updat
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(task.title ?? "");
   const [editContent, setEditContent] = useState(task.content ?? "");
-  const [editAttachments, setEditAttachments] = useState<{ name: string; url: string; type: string; path: string }[]>(task.attachments ?? []);
+  const [editAttachments, setEditAttachments] = useState<TaskAttachment[]>(task.attachments ?? []);
   const [newFiles, setNewFiles] = useState<File[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isRestoreDialogOpen, setIsRestoreDialogOpen] = useState(false);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
+  const [isQuickAttachOpen, setIsQuickAttachOpen] = useState(false);
+  const [quickAttachFiles, setQuickAttachFiles] = useState<File[]>([]);
+  const [isQuickUploading, setIsQuickUploading] = useState(false);
+  const { showToast } = useToast();
   const titleInputRef = useRef<HTMLInputElement>(null);
 
   const isArchived = !!task.archived_at;
@@ -88,6 +94,30 @@ export default function TaskCard({ task, columnColor = "zinc", deleteTask, updat
     }
   }, [isEditing]);
 
+  const handleQuickUpload = async () => {
+    if (quickAttachFiles.length === 0 || !updateTask) return;
+    setIsQuickUploading(true);
+    const uploaded = await uploadTaskFiles(quickAttachFiles);
+    if (uploaded.length > 0) {
+      const updated = [...(task.attachments || []), ...uploaded];
+      await updateTask(task.id, task.title || "", task.content || "", updated);
+      showToast({
+        type: "success",
+        title: "Photo Attached",
+        message: `${uploaded.length > 1 ? `${uploaded.length} photos` : "Photo"} uploaded to task!`,
+      });
+      setQuickAttachFiles([]);
+      setIsQuickAttachOpen(false);
+    } else {
+      showToast({
+        type: "error",
+        title: "Upload Failed",
+        message: "Could not upload photo. Please try again.",
+      });
+    }
+    setIsQuickUploading(false);
+  };
+
   const handleEditSave = async () => {
     const trimTitle = editTitle.trim();
     const trimContent = editContent.trim();
@@ -97,25 +127,8 @@ export default function TaskCard({ task, columnColor = "zinc", deleteTask, updat
     
     if (newFiles.length > 0) {
       setIsUploading(true);
-      for (const file of newFiles) {
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${Math.random().toString(36).substring(2, 15)}_${Date.now()}.${fileExt}`;
-        const filePath = `${fileName}`;
-        
-        const { error: uploadError } = await supabase.storage
-          .from('task-attachments')
-          .upload(filePath, file);
-          
-        if (!uploadError) {
-          const { data } = supabase.storage.from('task-attachments').getPublicUrl(filePath);
-          finalAttachments.push({
-            name: file.name,
-            url: data.publicUrl,
-            type: file.type,
-            path: filePath
-          });
-        }
-      }
+      const uploaded = await uploadTaskFiles(newFiles);
+      finalAttachments = [...finalAttachments, ...uploaded];
       setIsUploading(false);
     }
     
@@ -296,9 +309,54 @@ export default function TaskCard({ task, columnColor = "zinc", deleteTask, updat
                <Text size="xs" c="dimmed">Created: {formatDate(task.created_at)}</Text>
              </Group>
           )}
-          {task.attachments && task.attachments.length > 0 && (
-            <div className="mt-2 border-t border-zinc-100 dark:border-zinc-800 pt-3">
-              <Text fw={600} size="sm" mb="xs" c="var(--mantine-color-text)">Attachments</Text>
+          {/* Attachments Section in View Dialog */}
+          <div className="mt-2 border-t border-zinc-100 dark:border-zinc-800 pt-3">
+            <Group justify="space-between" align="center" mb="xs">
+              <Text fw={600} size="sm" c="var(--mantine-color-text)">
+                Attachments {task.attachments && task.attachments.length > 0 ? `(${task.attachments.length})` : ''}
+              </Text>
+              {isEditable && (
+                <Button
+                  variant={isQuickAttachOpen ? "filled" : "light"}
+                  color={isQuickAttachOpen ? "blue" : "gray"}
+                  size="compact-xs"
+                  leftSection={isQuickAttachOpen ? <IconX size={12} /> : <IconPlus size={12} />}
+                  onClick={() => {
+                    setIsQuickAttachOpen(!isQuickAttachOpen);
+                    setQuickAttachFiles([]);
+                  }}
+                >
+                  {isQuickAttachOpen ? "Close Upload" : "Attach Photo"}
+                </Button>
+              )}
+            </Group>
+
+            {/* Quick Attach / Paste Zone when toggled ON */}
+            {isQuickAttachOpen && (
+              <div className="mb-3 p-3 bg-zinc-50 dark:bg-zinc-800/40 rounded-xl border border-zinc-200 dark:border-zinc-700/60">
+                <AttachmentUploadZone
+                  files={quickAttachFiles}
+                  onFilesChange={setQuickAttachFiles}
+                  label="New Photo Attachment"
+                  isModalOpen={isViewDialogOpen && isQuickAttachOpen}
+                />
+                {quickAttachFiles.length > 0 && (
+                  <Group justify="flex-end" mt="xs">
+                    <Button
+                      size="xs"
+                      color="blue"
+                      leftSection={isQuickUploading ? <IconLoader2 size={14} className="animate-spin" /> : <IconCheck size={14} />}
+                      loading={isQuickUploading}
+                      onClick={handleQuickUpload}
+                    >
+                      Upload & Save Photo
+                    </Button>
+                  </Group>
+                )}
+              </div>
+            )}
+
+            {task.attachments && task.attachments.length > 0 ? (
               <div className="flex flex-wrap gap-3">
                 {task.attachments.map((att, i) => (
                   <div key={i} className="rounded-md border border-zinc-200 dark:border-zinc-700 overflow-hidden relative group" style={{ maxWidth: '200px' }}>
@@ -315,8 +373,10 @@ export default function TaskCard({ task, columnColor = "zinc", deleteTask, updat
                   </div>
                 ))}
               </div>
-            </div>
-          )}
+            ) : !isQuickAttachOpen ? (
+              <Text size="xs" c="dimmed" fs="italic">No attachments yet.</Text>
+            ) : null}
+          </div>
         </div>
         <Group justify="flex-end" mt="xl">
           <Button variant="subtle" color="gray" onClick={() => setIsViewDialogOpen(false)}>Close</Button>
@@ -353,49 +413,12 @@ export default function TaskCard({ task, columnColor = "zinc", deleteTask, updat
             maxRows={8}
             autosize
           />
-          <FileInput
+          <AttachmentUploadZone
+            files={newFiles}
+            onFilesChange={setNewFiles}
             label="Add Attachments"
-            placeholder="Select files or images"
-            multiple
-            value={[]}
-            onChange={(payload) => {
-              if (payload && payload.length > 0) {
-                setNewFiles(prev => {
-                  const existing = new Set(prev.map(f => `${f.name}-${f.size}`));
-                  const toAdd = payload.filter(f => !existing.has(`${f.name}-${f.size}`));
-                  return [...prev, ...toAdd];
-                });
-              }
-            }}
+            isModalOpen={isEditing}
           />
-          {newFiles.length > 0 && (
-            <div>
-              <Text size="xs" fw={600} mb={4}>New Files to Upload</Text>
-              <div className="flex flex-wrap gap-2">
-                {newFiles.map((file, i) => (
-                  <div key={i} className="relative group border border-zinc-200 dark:border-zinc-700 rounded-md overflow-hidden" style={{ width: '80px', height: '80px' }}>
-                    {file.type.startsWith('image/') ? (
-                      <MantineImage src={URL.createObjectURL(file)} w="100%" h="100%" fit="cover" />
-                    ) : (
-                      <div className="flex flex-col items-center justify-center h-full bg-zinc-50 dark:bg-zinc-800 p-2">
-                        <IconPaperclip size={20} className="text-zinc-400 mb-1" />
-                        <Text size="xs" truncate w="100%" ta="center">{file.name}</Text>
-                      </div>
-                    )}
-                    <ActionIcon 
-                      size="sm" 
-                      color="red" 
-                      variant="filled" 
-                      className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                      onClick={() => setNewFiles(newFiles.filter((_, idx) => idx !== i))}
-                    >
-                      <IconX size={12} />
-                    </ActionIcon>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
           {editAttachments.length > 0 && (
             <div>
               <Text size="xs" fw={600} mb={4}>Current Attachments</Text>
