@@ -29,7 +29,7 @@ import AddColumnModal from './modals/AddColumnModal';
 import {BoardSkeleton} from './ui/Skeleton';
 import { throttle } from '@/lib/utils';
 import Image from 'next/image';
-import { generateKeyBetween } from 'fractional-indexing';
+import { safeGenerateKeyBetween, safeGenerateNKeysBetween, isValidOrderKey } from '@/lib/order';
 interface KanbanBoardProps {
 	projectId: string;
 	onToggleSidebar: () => void;
@@ -164,7 +164,7 @@ export default function KanbanBoard({projectId, onToggleSidebar}: KanbanBoardPro
 	const sortTasks = (tsks: Task[]) => {
 		return [...tsks].sort((a, b) => {
 			if (a.column_id !== b.column_id) return a.column_id.localeCompare(b.column_id);
-			return a.position.localeCompare(b.position) || a.id.localeCompare(b.id);
+			return String(a.position ?? '').localeCompare(String(b.position ?? '')) || a.id.localeCompare(b.id);
 		});
 	};
 
@@ -252,8 +252,18 @@ export default function KanbanBoard({projectId, onToggleSidebar}: KanbanBoardPro
 		const sortedCols = [...finalCols].sort((a, b) => {
 			if (a.is_archive_pool) return 1;
 			if (b.is_archive_pool) return -1;
-			return a.position.localeCompare(b.position);
+			return String(a.position ?? '').localeCompare(String(b.position ?? ''));
 		});
+
+		// Auto-heal regular columns that have invalid fractional indexing keys (e.g. legacy numeric "0", "1")
+		const regularCols = sortedCols.filter((c) => !c.is_archive_pool);
+		if (regularCols.some((c) => !isValidOrderKey(c.position)) && regularCols.length > 0) {
+			const keys = safeGenerateNKeysBetween(null, null, regularCols.length);
+			regularCols.forEach((c, idx) => {
+				c.position = keys[idx];
+				supabase.from('columns').update({position: keys[idx]}).eq('id', c.id).then();
+			});
+		}
 
 		updateColumns(sortedCols);
 		if (finalCols.length > 0 && !selectedColumnId) {
@@ -469,9 +479,16 @@ export default function KanbanBoard({projectId, onToggleSidebar}: KanbanBoardPro
 	}, [currentUserRole]);
 
 	const addTask = async (columnId: string, title: string, content: string, attachments: any[] = []) => {
-		const colTasks = tasks.filter((t) => t.column_id === columnId);
+		let colTasks = tasks.filter((t) => t.column_id === columnId);
+		if (colTasks.some((t) => !isValidOrderKey(t.position))) {
+			const keys = safeGenerateNKeysBetween(null, null, colTasks.length);
+			colTasks = colTasks.map((t, idx) => ({ ...t, position: keys[idx] }));
+			colTasks.forEach((t) => {
+				supabase.from('tasks').update({position: t.position}).eq('id', t.id).then();
+			});
+		}
 		const lastTask = colTasks.length > 0 ? colTasks[colTasks.length - 1] : null;
-		const newPos = generateKeyBetween(lastTask ? lastTask.position : null, null);
+		const newPos = safeGenerateKeyBetween(lastTask ? lastTask.position : null, null);
 
 		const tempId = crypto.randomUUID();
 		const nowStr = new Date().toISOString();
@@ -637,7 +654,7 @@ export default function KanbanBoard({projectId, onToggleSidebar}: KanbanBoardPro
 
 		const colTasks = tasks.filter((t) => t.column_id === finalTargetId);
 		const lastTask = colTasks.length > 0 ? colTasks[colTasks.length - 1] : null;
-		const newPos = generateKeyBetween(lastTask ? lastTask.position : null, null);
+		const newPos = safeGenerateKeyBetween(lastTask ? lastTask.position : null, null);
 
 		updateTasks((prev) =>
 			prev.map((t) => (t.id === id ? {...t, column_id: finalTargetId, archived_at: null, previous_column_id: null, position: newPos} : t)),
@@ -657,9 +674,19 @@ export default function KanbanBoard({projectId, onToggleSidebar}: KanbanBoardPro
 
 	const addColumn = async (title: string, color: string, description?: string) => {
 		const archivePool = columns.find((c) => c.is_archive_pool);
-		const regularCols = columns.filter((c) => !c.is_archive_pool);
+		let regularCols = columns.filter((c) => !c.is_archive_pool);
+
+		// If any regular column has an invalid position (e.g. legacy numeric "0", "1"), heal them first
+		if (regularCols.some((c) => !isValidOrderKey(c.position))) {
+			const keys = safeGenerateNKeysBetween(null, null, regularCols.length);
+			regularCols = regularCols.map((c, idx) => ({ ...c, position: keys[idx] }));
+			regularCols.forEach((c) => {
+				supabase.from('columns').update({position: c.position}).eq('id', c.id).then();
+			});
+		}
+
 		const lastCol = regularCols.length > 0 ? regularCols[regularCols.length - 1] : null;
-		const newPos = generateKeyBetween(lastCol ? lastCol.position : null, null);
+		const newPos = safeGenerateKeyBetween(lastCol ? lastCol.position : null, null);
 
 		// Optimistic update
 		const tempId = crypto.randomUUID();
@@ -684,24 +711,37 @@ export default function KanbanBoard({projectId, onToggleSidebar}: KanbanBoardPro
 
 		setIsAddingColumn(false);
 
-		const {data} = await supabase.from('columns').insert({
-			id: tempId, 
-			project_id: projectId, 
-			title, 
-			description: description || null,
-			color, 
-			position: newPos
-		}).select().single();
+		try {
+			const {data, error} = await supabase.from('columns').insert({
+				id: tempId, 
+				project_id: projectId, 
+				title, 
+				description: description || null, 
+				color, 
+				position: newPos
+			}).select().single();
 
-		if (data) {
-			updateColumns((prev) => prev.map((c) => (c.id === tempId ? data : c)));
+			if (error) throw error;
 
-			if (!selectedColumnId) setSelectedColumnId(data.id);
+			if (data) {
+				updateColumns((prev) => prev.map((c) => (c.id === tempId ? data : c)));
 
+				if (!selectedColumnId) setSelectedColumnId(data.id);
+
+				showToast({
+					type: 'success',
+					title: 'Column Added',
+					message: `"${title}" column is now active.`,
+				});
+			}
+		} catch (err: any) {
+			console.error('Column creation error:', err);
+			// Revert optimistic update on error
+			updateColumns((prev) => prev.filter((c) => c.id !== tempId));
 			showToast({
-				type: 'success',
-				title: 'Column Added',
-				message: `"${title}" column is now active.`,
+				type: 'error',
+				title: 'Failed to create column',
+				message: err?.message || 'An error occurred while saving the column.',
 			});
 		}
 	};
@@ -871,7 +911,7 @@ export default function KanbanBoard({projectId, onToggleSidebar}: KanbanBoardPro
 			const prevCol = newIndex > 0 ? finalColumns[newIndex - 1] : null;
 			const nextCol = newIndex < finalColumns.length - 1 ? finalColumns[newIndex + 1] : null;
 
-			const newPos = generateKeyBetween(
+			const newPos = safeGenerateKeyBetween(
 				prevCol ? prevCol.position : null,
 				nextCol && !nextCol.is_archive_pool ? nextCol.position : null
 			);
@@ -911,7 +951,7 @@ export default function KanbanBoard({projectId, onToggleSidebar}: KanbanBoardPro
 			const prevTask = newIndex > 0 ? colTasks[newIndex - 1] : null;
 			const nextTask = newIndex < colTasks.length - 1 ? colTasks[newIndex + 1] : null;
 
-			const newPos = generateKeyBetween(
+			const newPos = safeGenerateKeyBetween(
 				prevTask ? prevTask.position : null,
 				nextTask ? nextTask.position : null
 			);

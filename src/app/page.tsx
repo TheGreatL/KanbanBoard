@@ -8,6 +8,7 @@ import Sidebar, {Project} from '@/components/Sidebar';
 import {cn} from '@/lib/utils';
 import dynamic from 'next/dynamic';
 import { ProjectTemplate, PROJECT_TEMPLATES } from '@/lib/templates';
+import { safeGenerateNKeysBetween } from '@/lib/order';
 
 const KanbanBoard = dynamic(() => import('@/components/KanbanBoard'), {ssr: false});
 
@@ -125,13 +126,14 @@ export default function Home() {
 					is_archive_pool: false,
 				};
 				
+				const keys = safeGenerateNKeysBetween(null, null, templateDef.columns.length);
 				const columnsToInsert = templateDef.columns.map((col, index) => ({
 					...baseColumn,
 					id: crypto.randomUUID(),
 					title: col.title,
 					description: col.description,
 					color: col.color,
-					position: index
+					position: keys[index]
 				}));
 
 				await supabase.from('columns').insert(columnsToInsert);

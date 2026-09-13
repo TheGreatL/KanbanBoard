@@ -316,7 +316,7 @@ RETURNS TRIGGER AS $$
 BEGIN
   -- 1. Create the mandatory 'Archived' column
   INSERT INTO public.columns (project_id, title, color, position, is_archive_pool)
-  VALUES (new.id, 'Archived', 'zinc', 0, true);
+  VALUES (new.id, 'Archived', 'zinc', 'z9', true);
 
   -- 2. Add the creator as the owner in project_members
   INSERT INTO public.project_members (project_id, user_id, role)
